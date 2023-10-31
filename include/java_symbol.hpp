@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ostream>
 #include <string>
 #include <utility>
 
@@ -56,5 +57,7 @@ private:
     std::uint32_t length_;
     std::string symbol_;
 };
+
+std::ostream &operator<<(std::ostream &outs, const JavaSymbol &symbol);
 
 }

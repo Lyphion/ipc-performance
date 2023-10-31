@@ -37,11 +37,10 @@ DataHeader DataHeader::deserialize(const char *buffer, unsigned int size) {
 std::ostream &operator<<(std::ostream &outs, const DataHeader &header) {
     std::ios_base::fmtflags f(outs.flags());
 
-    outs << std::hex << std::setfill('0')
-         << "(0x" << std::setw(sizeof(header.get_id()) * 2) << header.get_id()
-         << ", 0x" << std::setw(sizeof(header.get_type()) * 2) << header.get_type()
-         << ", 0x" << std::setw(sizeof(header.get_body_size()) * 2) << header.get_body_size()
-         << ", 0x" << std::setw(sizeof(header.get_timestamp()) * 2) << header.get_timestamp() << ")";
+    outs << std::setfill('0')
+         << '(' << header.get_id() << ", " << header.get_type()
+         << ", 0x" << std::hex << std::setw(sizeof(header.get_body_size()) * 2) << header.get_body_size()
+         << ", " << std::dec << header.get_timestamp() << ')';
     outs.flags(f);
 
     return outs;

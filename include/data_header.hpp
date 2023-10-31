@@ -1,7 +1,8 @@
 #pragma once
 
-#include <ostream>
 #include <cstdint>
+#include <ostream>
+
 #include "data_type.hpp"
 
 namespace ipc {

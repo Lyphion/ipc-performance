@@ -1,6 +1,7 @@
 #include "../include/java_symbol.hpp"
 
 #include <cstring>
+#include <iomanip>
 
 namespace ipc {
 
@@ -62,6 +63,18 @@ JavaSymbol JavaSymbol::deserialize(const char *buffer, unsigned int size) {
     std::memcpy(symbol.data(), &buffer[offset], symbol_length);
 
     return {address, length, symbol};
+}
+
+std::ostream &operator<<(std::ostream &outs, const JavaSymbol &symbol) {
+    std::ios_base::fmtflags f(outs.flags());
+
+    outs << std::setfill('0') << std::hex
+         << "(0x" << std::setw(sizeof(symbol.get_address()) * 2) << symbol.get_address()
+         << ", 0x" << std::setw(sizeof(symbol.get_length()) * 2) << symbol.get_length()
+         << ", \"" << symbol.get_symbol() << "\")";
+    outs.flags(f);
+
+    return outs;
 }
 
 }

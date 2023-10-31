@@ -16,7 +16,7 @@ public:
      * Write a data object into the inter-process communication handler.
      *
      * @param obj Object to write into the handler.
-     * @remark It will block until the object was written.
+     * @remark The method will block until the object was written.
      */
     virtual void write(const IDataObject &obj) = 0;
 
@@ -26,7 +26,7 @@ public:
      * @param header Received header of the object.
      *
      * @return Object received from the handler.
-     * @remark It will block until a object was read.
+     * @remark The method will block until a object was read.
      */
     virtual std::tuple<DataHeader, IDataObject> read() = 0;
 };
