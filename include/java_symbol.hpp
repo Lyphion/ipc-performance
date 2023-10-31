@@ -7,14 +7,24 @@
 
 namespace ipc {
 
+/**
+ * Object with Java Symbol and address area.
+ */
 class JavaSymbol : public IDataObject {
 public:
+    /**
+     * Create a new data java symbol object containing address area and name.
+     *
+     * @param address Address of the symbol.
+     * @param length  Length of the symbol address area.
+     * @param symbol  Name of the symbol.
+     */
     JavaSymbol(std::uint64_t address, std::uint32_t length, std::string symbol)
             : address_(address), length_(length), symbol_(std::move(symbol)) {}
 
     unsigned int serialize(char *buffer, unsigned int size) const override;
 
-    DataType get_type() const override { return DataType::JAVA_SYMBOL_LOOKUP; };
+    inline DataType get_type() const override { return DataType::JAVA_SYMBOL_LOOKUP; };
 
     /**
      * Address of the symbol.

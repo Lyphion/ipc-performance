@@ -16,7 +16,7 @@ void print_array(const char *data, int size) {
 }
 
 int main() {
-    auto header = ipc::DataHeader(
+    ipc::DataHeader header(
             0x01020304,
             ipc::DataType::JAVA_SYMBOL_LOOKUP,
             0x0708,
@@ -36,7 +36,7 @@ int main() {
 
     std::fill_n(buffer, 32, 0);
 
-    auto symbol = ipc::JavaSymbol(0x1, 0x2, "ABC");
+    ipc::JavaSymbol symbol(0x1, 0x2, "ABC");
     size = symbol.serialize(buffer, 32);
 
     std::cout << "Size: " << size << std::endl;

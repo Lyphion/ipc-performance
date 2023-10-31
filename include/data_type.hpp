@@ -4,8 +4,14 @@
 
 namespace ipc {
 
+/**
+ * Enumeration of all data types.
+ */
 enum DataType : std::uint16_t {
+    /// Invalid type
     INVALID = 0,
+
+    /// Type for Java Symbols
     JAVA_SYMBOL_LOOKUP = 1
 };
 

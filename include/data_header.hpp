@@ -37,7 +37,7 @@ public:
      *
      * @return True, if header is valid.
      */
-    bool is_valid() const { return type_ != DataType::INVALID; }
+    constexpr bool is_valid() const { return type_ != DataType::INVALID; }
 
     /**
      * Id of the message.

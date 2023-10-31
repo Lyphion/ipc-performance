@@ -22,7 +22,7 @@ DataHeader DataHeader::deserialize(const char *buffer, unsigned int size) {
     constexpr auto header_size = sizeof(DataHeader);
     static_assert(header_size == 16, "Size of header should match");
 
-    auto header = DataHeader(0, DataType::INVALID, 0, 0);
+    DataHeader header(0, DataType::INVALID, 0, 0);
 
     // Not enough space in buffer
     if (size < header_size)

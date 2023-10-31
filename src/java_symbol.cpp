@@ -5,8 +5,11 @@
 namespace ipc {
 
 unsigned int JavaSymbol::serialize(char *buffer, unsigned int size) const {
-    const auto obj_size = sizeof(JavaSymbol::address_) + sizeof(JavaSymbol::length_)
-                          + sizeof(std::uint32_t) + this->symbol_.length();
+    constexpr auto header_size = sizeof(JavaSymbol::address_)
+                                 + sizeof(JavaSymbol::length_) + sizeof(std::uint32_t);
+    static_assert(header_size == 16, "Size should match");
+
+    const auto obj_size = header_size + this->symbol_.length();
 
     // Not enough space in buffer
     if (obj_size > size)
@@ -29,25 +32,25 @@ unsigned int JavaSymbol::serialize(char *buffer, unsigned int size) const {
 }
 
 JavaSymbol JavaSymbol::deserialize(const char *buffer, unsigned int size) {
-    const auto header_size = sizeof(JavaSymbol::address_)
-                             + sizeof(JavaSymbol::length_) + sizeof(std::uint32_t);
+    constexpr auto header_size = sizeof(JavaSymbol::address_)
+                                 + sizeof(JavaSymbol::length_) + sizeof(std::uint32_t);
+    static_assert(header_size == 16, "Size should match");
 
     std::uint64_t address;
-    std::uint32_t length;
-    std::uint32_t symbol_length;
+    std::uint32_t length, symbol_length;
 
     // Not enough space in buffer
     if (size < header_size)
         return {0, 0, ""};
 
     auto offset = 0;
-    std::memcpy(&address, &buffer[offset], sizeof(std::uint64_t));
+    std::memcpy(&address, &buffer[offset], sizeof(address));
     offset += sizeof(address);
 
-    std::memcpy(&length, &buffer[offset], sizeof(std::uint32_t));
+    std::memcpy(&length, &buffer[offset], sizeof(length));
     offset += sizeof(length);
 
-    std::memcpy(&symbol_length, &buffer[offset], sizeof(std::uint32_t));
+    std::memcpy(&symbol_length, &buffer[offset], sizeof(symbol_length));
     offset += sizeof(symbol_length);
 
     // Not enough space in buffer or empty symbol

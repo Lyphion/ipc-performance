@@ -4,6 +4,9 @@
 
 namespace ipc {
 
+/**
+ * Interface for all data objects.
+ */
 class IDataObject {
 public:
     /**
@@ -17,7 +20,7 @@ public:
     virtual unsigned int serialize(char *buffer, unsigned int size) const = 0;
 
     /**
-     * Type of the Object.
+     * Type of the object.
      */
     virtual DataType get_type() const = 0;
 };
