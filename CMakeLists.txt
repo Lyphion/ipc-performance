@@ -18,4 +18,5 @@ add_executable(IPC src/main.cpp
         src/data_header.cpp
         include/java_symbol.hpp
         src/java_symbol.cpp
+        include/communication_handler.hpp
 )
