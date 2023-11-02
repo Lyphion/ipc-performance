@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <tuple>
 
 #include "data_object.hpp"
@@ -16,9 +17,8 @@ public:
      * Write a data object into the inter-process communication handler.
      *
      * @param obj Object to write into the handler.
-     * @remark The method will block until the object was written.
      */
-    virtual void write(const IDataObject &obj) = 0;
+    virtual bool write(const IDataObject &obj) = 0;
 
     /**
      * Read a data object from the inter-process communication handler.
@@ -26,9 +26,8 @@ public:
      * @param header Received header of the object.
      *
      * @return Object received from the handler.
-     * @remark The method will block until a object was read.
      */
-    virtual std::tuple<DataHeader, IDataObject> read() = 0;
+    virtual std::tuple<DataHeader, std::unique_ptr<IDataObject>> read() = 0;
 };
 
 }

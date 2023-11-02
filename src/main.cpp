@@ -1,9 +1,11 @@
 #include <chrono>
 #include <iostream>
 #include <iomanip>
+#include <thread>
 
 #include "../include/data_header.hpp"
 #include "../include/java_symbol.hpp"
+#include "../include/fifo.hpp"
 
 /**
  * Print byte array tp console.
@@ -24,7 +26,8 @@ void print_array(const char *data, int size) {
     std::cout.flags(f);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    /*
     const auto time = std::chrono::high_resolution_clock::now();
     const std::int64_t timestamp = std::chrono::time_point_cast<std::chrono::nanoseconds>(time)
             .time_since_epoch().count();
@@ -61,6 +64,58 @@ int main() {
     auto parsed_symbol = ipc::JavaSymbol::deserialize(buffer, buffer_size);
 
     delete[] buffer;
+
+     */
+
+    if (argc < 3)
+        return 1;
+
+    std::string path(argv[1]);
+    bool readonly = strtol(argv[2], nullptr, 10) != 0;
+
+    ipc::Fifo pipe(path);
+    bool res = pipe.open();
+    if (!res) {
+        std::cout << "Error opening pipe" << std::endl;
+        return -1;
+    }
+
+    std::cout << "Pipe opened" << std::endl;
+
+    while (true) {
+        if (readonly) {
+            if (!pipe.await_data())
+                continue;
+
+            auto pair = pipe.read();
+            auto header = std::get<0>(pair);
+
+            if (!header.is_valid()) {
+                std::cout << "Invalid data received" << std::endl;
+            } else {
+                std::cout << "Header" << header << std::endl;
+                switch (header.get_type()) {
+                    case ipc::INVALID:
+                        break;
+                    case ipc::JAVA_SYMBOL_LOOKUP:
+                        auto symbol = dynamic_cast<ipc::JavaSymbol *>(std::get<1>(pair).get());
+                        std::cout << "JavaSymbol" << *symbol << std::endl;
+                        break;
+                }
+            }
+        } else {
+            ipc::JavaSymbol data(
+                    static_cast<std::int64_t>(rand()) << 32 | rand(),
+                    rand(),
+                    "test123"
+            );
+
+            pipe.write(data);
+            std::cout << "JavaSymbol" << data << std::endl;
+
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    }
 
     return 0;
 }

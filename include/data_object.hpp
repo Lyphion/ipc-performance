@@ -10,6 +10,11 @@ namespace ipc {
 class IDataObject {
 public:
     /**
+     * Destructor for the data objects.
+     */
+    virtual ~IDataObject() = default;
+
+    /**
      * Serialize the object into a buffer.
      *
      * @param buffer Buffer to serialize the object into.

@@ -23,6 +23,11 @@ public:
     JavaSymbol(std::uint64_t address, std::uint32_t length, std::string symbol)
             : address_(address), length_(length), symbol_(std::move(symbol)) {}
 
+    /**
+     * Default destructor.
+     */
+    ~JavaSymbol() override = default;
+
     unsigned int serialize(char *buffer, unsigned int size) const override;
 
     inline DataType get_type() const override { return DataType::JAVA_SYMBOL_LOOKUP; };

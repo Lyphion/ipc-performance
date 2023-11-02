@@ -19,4 +19,6 @@ add_executable(IPC src/main.cpp
         include/java_symbol.hpp
         src/java_symbol.cpp
         include/communication_handler.hpp
+        include/fifo.hpp
+        src/fifo.cpp
 )
