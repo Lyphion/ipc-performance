@@ -7,7 +7,7 @@ namespace ipc {
 /**
  * Enumeration of all data types.
  */
-enum DataType : std::uint16_t {
+enum class DataType : std::uint16_t {
     /// Invalid type
     INVALID = 0,
 

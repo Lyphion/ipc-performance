@@ -1,30 +1,27 @@
 #include <chrono>
 #include <iostream>
-#include <iomanip>
 #include <thread>
 
 #include "../include/data_header.hpp"
 #include "../include/java_symbol.hpp"
 #include "../include/fifo.hpp"
 
-/**
- * Print byte array tp console.
- *
- * @param data Byte array to print.
- * @param size Size of array.
+/*
+ *  std::variant
+ *      std::visit
+ *  std::any
+ *  std::array statt char*
+ *  std::byte
  */
-void print_array(const char *data, int size) {
-    std::ios_base::fmtflags f(std::cout.flags());
 
-    std::cout << std::setfill('0') << std::hex;
-    for (auto i = 0; i < size; i++) {
-        auto val = static_cast<int>(data[i]) & 0xff;
-        std::cout << std::setw(sizeof(char) * 2) << val;
-    }
-
-    std::cout << std::endl;
-    std::cout.flags(f);
-}
+// helper type for the visitor
+template<class... Ts>
+struct overloaded : Ts ... {
+    using Ts::operator()...;
+};
+// explicit deduction guide (not needed as of C++20)
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 
 int main(int argc, char *argv[]) {
     /*
@@ -87,22 +84,23 @@ int main(int argc, char *argv[]) {
             if (!pipe.await_data())
                 continue;
 
-            auto pair = pipe.read();
-            auto header = std::get<0>(pair);
+            auto option = pipe.read();
+            if (!option)
+                continue;
+
+            auto [header, data] = *option;
 
             if (!header.is_valid()) {
                 std::cout << "Invalid data received" << std::endl;
-            } else {
-                std::cout << "Header" << header << std::endl;
-                switch (header.get_type()) {
-                    case ipc::INVALID:
-                        break;
-                    case ipc::JAVA_SYMBOL_LOOKUP:
-                        auto symbol = dynamic_cast<ipc::JavaSymbol *>(std::get<1>(pair).get());
-                        std::cout << "JavaSymbol" << *symbol << std::endl;
-                        break;
-                }
+                continue;
             }
+
+            std::cout << "Header" << header << std::endl;
+            std::visit(overloaded{
+                    [](ipc::JavaSymbol &symbol) {
+                        std::cout << "JavaSymbol" << symbol << std::endl;
+                    }
+            }, data);
         } else {
             ipc::JavaSymbol data(
                     static_cast<std::int64_t>(rand()) << 32 | rand(),

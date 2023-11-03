@@ -57,7 +57,7 @@ public:
 
     bool write(const IDataObject &obj) override;
 
-    std::tuple<DataHeader, std::unique_ptr<IDataObject>> read() override;
+    std::optional<std::tuple<DataHeader, DataObject>> read() override;
 
     /**
      * Path of the pipe.

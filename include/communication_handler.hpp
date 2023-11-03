@@ -1,12 +1,18 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <tuple>
+#include <variant>
 
 #include "data_object.hpp"
 #include "data_header.hpp"
+#include "java_symbol.hpp"
 
 namespace ipc {
+
+/// Variant for all data types
+using DataObject = std::variant<JavaSymbol>;
 
 /**
  * Interface for all inter-process communication handlers.
@@ -27,7 +33,7 @@ public:
      *
      * @return Object received from the handler.
      */
-    virtual std::tuple<DataHeader, std::unique_ptr<IDataObject>> read() = 0;
+    virtual std::optional<std::tuple<DataHeader, DataObject>> read() = 0;
 };
 
 }

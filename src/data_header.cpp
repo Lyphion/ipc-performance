@@ -38,7 +38,7 @@ std::ostream &operator<<(std::ostream &outs, const DataHeader &header) {
     std::ios_base::fmtflags f(outs.flags());
 
     outs << std::setfill('0')
-         << '(' << header.get_id() << ", " << header.get_type()
+         << '(' << header.get_id() << ", " << static_cast<std::uint16_t>(header.get_type())
          << ", 0x" << std::hex << std::setw(sizeof(header.get_body_size()) * 2) << header.get_body_size()
          << ", " << std::dec << header.get_timestamp() << ')';
     outs.flags(f);

@@ -1,13 +1,11 @@
 #include "../include/fifo.hpp"
 
-#include <stdexcept>
-
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "../include/java_symbol.hpp"
+#include "../include/utility.hpp"
 
 namespace ipc {
 
@@ -108,7 +106,7 @@ bool Fifo::write(const IDataObject &obj) {
     std::uint32_t size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
 
     last_id_++;
-    auto timestamp = get_timestamp();
+    auto timestamp = ::get_timestamp();
     DataHeader header(last_id_, obj.get_type(), size, timestamp);
 
     // Serialize header
@@ -119,59 +117,38 @@ bool Fifo::write(const IDataObject &obj) {
     return res != -1;
 }
 
-std::tuple<DataHeader, std::unique_ptr<IDataObject>> Fifo::read() {
+std::optional<std::tuple<DataHeader, DataObject>> Fifo::read() {
     constexpr auto header_size = sizeof(DataHeader);
     std::lock_guard<std::mutex> lock(mutex_);
 
     // Check if pipe is open
     if (fd_ == -1)
-        return std::make_tuple(
-                DataHeader(0, DataType::INVALID, 0, 0),
-                std::unique_ptr<IDataObject>()
-        );
+        return std::nullopt;
 
     // Read data from pipe
     auto res = ::read(fd_, buffer_, BUFFER_SIZE);
     if (res == -1 || res == 0)
-        return std::make_tuple(
-                DataHeader(0, DataType::INVALID, 0, 0),
-                std::unique_ptr<IDataObject>()
-        );
+        return std::nullopt;
 
     // Deserialize header
     auto header = DataHeader::deserialize(buffer_, BUFFER_SIZE);
 
     // Handle each type differently
     switch (header.get_type()) {
-        case INVALID:
+        case DataType::INVALID:
             break;
 
-        case JAVA_SYMBOL_LOOKUP: {
+        case DataType::JAVA_SYMBOL_LOOKUP: {
             // Deserialize Java Symbols
-            auto obj = JavaSymbol::deserialize(&buffer_[header_size], BUFFER_SIZE - header_size);
             return std::make_tuple(
                     header,
-                    std::make_unique<JavaSymbol>(obj)
+                    JavaSymbol::deserialize(&buffer_[header_size], BUFFER_SIZE - header_size)
             );
         }
     }
 
     // Unknown or invalid type
-    return std::make_tuple(
-            DataHeader(0, DataType::INVALID, 0, 0),
-            std::unique_ptr<IDataObject>()
-    );
-}
-
-/**
- * Get the current timestamp since epoch in nanoseconds.
- *
- * @return Timestamp in nanoseconds.
- */
-std::int64_t get_timestamp() {
-    const auto time = std::chrono::high_resolution_clock::now();
-    return std::chrono::time_point_cast<std::chrono::nanoseconds>(time)
-            .time_since_epoch().count();
+    return std::nullopt;
 }
 
 }

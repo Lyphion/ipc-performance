@@ -21,4 +21,6 @@ add_executable(IPC src/main.cpp
         include/communication_handler.hpp
         include/fifo.hpp
         src/fifo.cpp
+        include/utility.hpp
+        src/utility.cpp
 )
