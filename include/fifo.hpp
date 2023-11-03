@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <tuple>
@@ -68,7 +70,7 @@ private:
     int fd_ = -1;
 
     std::uint32_t last_id_ = 0;
-    char *buffer_;
+    std::array<std::byte, BUFFER_SIZE> buffer_{};
 };
 
 }

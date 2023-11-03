@@ -5,7 +5,7 @@
 
 namespace ipc {
 
-int JavaSymbol::serialize(char *buffer, unsigned int size) const {
+int JavaSymbol::serialize(std::byte *buffer, unsigned int size) const {
     constexpr auto header_size = sizeof(JavaSymbol::address_)
                                  + sizeof(JavaSymbol::length_) + sizeof(std::uint32_t);
     static_assert(header_size == 16, "Size should match");
@@ -32,7 +32,7 @@ int JavaSymbol::serialize(char *buffer, unsigned int size) const {
     return static_cast<int>(obj_size);
 }
 
-std::optional<JavaSymbol> JavaSymbol::deserialize(const char *buffer, unsigned int size) {
+std::optional<JavaSymbol> JavaSymbol::deserialize(const std::byte *buffer, unsigned int size) {
     constexpr auto header_size = sizeof(JavaSymbol::address_)
                                  + sizeof(JavaSymbol::length_) + sizeof(std::uint32_t);
     static_assert(header_size == 16, "Size should match");

@@ -5,7 +5,7 @@
 
 namespace ipc {
 
-int DataHeader::serialize(char *buffer, const unsigned int size) const {
+int DataHeader::serialize(std::byte *buffer, const unsigned int size) const {
     constexpr auto header_size = sizeof(DataHeader);
     static_assert(header_size == 16, "Size of header should match");
 
@@ -18,7 +18,7 @@ int DataHeader::serialize(char *buffer, const unsigned int size) const {
     return header_size;
 }
 
-std::optional<DataHeader> DataHeader::deserialize(const char *buffer, unsigned int size) {
+std::optional<DataHeader> DataHeader::deserialize(const std::byte *buffer, unsigned int size) {
     constexpr auto header_size = sizeof(DataHeader);
     static_assert(header_size == 16, "Size of header should match");
 

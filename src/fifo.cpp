@@ -9,19 +9,13 @@
 
 namespace ipc {
 
-std::int64_t get_timestamp();
-
-Fifo::Fifo(std::string path) : path_(std::move(path)) {
-    buffer_ = new char[BUFFER_SIZE];
-}
+Fifo::Fifo(std::string path) : path_(std::move(path)) {}
 
 Fifo::~Fifo() {
     // Close pipe if open
     if (fd_ != -1) {
         close();
     }
-
-    delete[] buffer_;
 }
 
 bool Fifo::open() {
@@ -101,14 +95,14 @@ bool Fifo::write(const IDataObject &obj) {
     std::uint32_t size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
 
     last_id_++;
-    auto timestamp = ::get_timestamp();
+    auto timestamp = get_timestamp();
     DataHeader header(last_id_, obj.get_type(), size, timestamp);
 
     // Serialize header
-    header.serialize(buffer_, header_size);
+    header.serialize(buffer_.data(), header_size);
 
     // Write data into pipe
-    auto res = ::write(fd_, buffer_, header_size + size);
+    auto res = ::write(fd_, buffer_.data(), header_size + size);
     return res != -1;
 }
 
@@ -120,12 +114,12 @@ std::optional<std::tuple<DataHeader, DataObject>> Fifo::read() {
         return std::nullopt;
 
     // Read data from pipe
-    auto res = ::read(fd_, buffer_, BUFFER_SIZE);
+    auto res = ::read(fd_, buffer_.data(), BUFFER_SIZE);
     if (res == -1 || res == 0)
         return std::nullopt;
 
     // Deserialize header
-    auto optional = DataHeader::deserialize(buffer_, BUFFER_SIZE);
+    auto optional = DataHeader::deserialize(buffer_.data(), BUFFER_SIZE);
     if (!optional)
         return std::nullopt;
 

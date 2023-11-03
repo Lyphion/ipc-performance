@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include "data_type.hpp"
 
 namespace ipc {
@@ -22,7 +24,7 @@ public:
      *
      * @return Total number of bytes written into the buffer or -1 if an error occurred.
      */
-    virtual int serialize(char *buffer, unsigned int size) const = 0;
+    virtual int serialize(std::byte *buffer, unsigned int size) const = 0;
 
     /**
      * Type of the object.

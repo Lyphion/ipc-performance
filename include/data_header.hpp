@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <ostream>
 #include <optional>
@@ -32,7 +33,7 @@ public:
      *
      * @return Total number of bytes written into the buffer or -1 if an error occurred.
      */
-    int serialize(char *buffer, unsigned int size) const;
+    int serialize(std::byte *buffer, unsigned int size) const;
 
     /**
      * Check if this header is valid.
@@ -69,7 +70,7 @@ public:
      *
      * @return Deserialize header from buffer.
      */
-    static std::optional<DataHeader> deserialize(const char *buffer, unsigned int size);
+    static std::optional<DataHeader> deserialize(const std::byte *buffer, unsigned int size);
 
 private:
     std::uint32_t id_;

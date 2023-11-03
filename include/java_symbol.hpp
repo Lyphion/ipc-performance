@@ -29,7 +29,7 @@ public:
      */
     ~JavaSymbol() override = default;
 
-    int serialize(char *buffer, unsigned int size) const override;
+    int serialize(std::byte *buffer, unsigned int size) const override;
 
     inline DataType get_type() const override { return DataType::JAVA_SYMBOL_LOOKUP; };
 
@@ -56,7 +56,7 @@ public:
      *
      * @return Deserialize object from buffer.
      */
-    static std::optional<JavaSymbol> deserialize(const char *buffer, unsigned int size);
+    static std::optional<JavaSymbol> deserialize(const std::byte *buffer, unsigned int size);
 
 private:
     std::uint64_t address_;
