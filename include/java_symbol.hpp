@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -28,7 +29,7 @@ public:
      */
     ~JavaSymbol() override = default;
 
-    unsigned int serialize(char *buffer, unsigned int size) const override;
+    int serialize(char *buffer, unsigned int size) const override;
 
     inline DataType get_type() const override { return DataType::JAVA_SYMBOL_LOOKUP; };
 
@@ -55,7 +56,7 @@ public:
      *
      * @return Deserialize object from buffer.
      */
-    static JavaSymbol deserialize(const char *buffer, unsigned int size);
+    static std::optional<JavaSymbol> deserialize(const char *buffer, unsigned int size);
 
 private:
     std::uint64_t address_;

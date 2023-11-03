@@ -25,8 +25,6 @@ Fifo::~Fifo() {
 }
 
 bool Fifo::open() {
-    std::lock_guard<std::mutex> lock(mutex_);
-
     // Check if pipe is already open
     if (fd_ != -1)
         return true;
@@ -48,8 +46,6 @@ bool Fifo::open() {
 }
 
 bool Fifo::close() {
-    std::lock_guard<std::mutex> lock(mutex_);
-
     // Check if pipe is already closed
     if (fd_ == -1)
         return false;
@@ -96,7 +92,6 @@ bool Fifo::has_data() {
 
 bool Fifo::write(const IDataObject &obj) {
     constexpr auto header_size = sizeof(DataHeader);
-    std::lock_guard<std::mutex> lock(mutex_);
 
     // Check if pipe is open
     if (fd_ == -1)
@@ -119,7 +114,6 @@ bool Fifo::write(const IDataObject &obj) {
 
 std::optional<std::tuple<DataHeader, DataObject>> Fifo::read() {
     constexpr auto header_size = sizeof(DataHeader);
-    std::lock_guard<std::mutex> lock(mutex_);
 
     // Check if pipe is open
     if (fd_ == -1)
@@ -131,7 +125,11 @@ std::optional<std::tuple<DataHeader, DataObject>> Fifo::read() {
         return std::nullopt;
 
     // Deserialize header
-    auto header = DataHeader::deserialize(buffer_, BUFFER_SIZE);
+    auto optional = DataHeader::deserialize(buffer_, BUFFER_SIZE);
+    if (!optional)
+        return std::nullopt;
+
+    auto header = *optional;
 
     // Handle each type differently
     switch (header.get_type()) {
@@ -140,9 +138,12 @@ std::optional<std::tuple<DataHeader, DataObject>> Fifo::read() {
 
         case DataType::JAVA_SYMBOL_LOOKUP: {
             // Deserialize Java Symbols
+            auto data = JavaSymbol::deserialize(&buffer_[header_size], BUFFER_SIZE - header_size);
+            if (!data)
+                return std::nullopt;
+
             return std::make_tuple(
-                    header,
-                    JavaSymbol::deserialize(&buffer_[header_size], BUFFER_SIZE - header_size)
+                    header, *data
             );
         }
     }

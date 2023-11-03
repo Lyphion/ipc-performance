@@ -20,9 +20,9 @@ public:
      * @param buffer Buffer to serialize the object into.
      * @param size   Size of the buffer.
      *
-     * @return Total number of bytes written into the buffer.
+     * @return Total number of bytes written into the buffer or -1 if an error occurred.
      */
-    virtual unsigned int serialize(char *buffer, unsigned int size) const = 0;
+    virtual int serialize(char *buffer, unsigned int size) const = 0;
 
     /**
      * Type of the object.

@@ -5,29 +5,28 @@
 
 namespace ipc {
 
-unsigned int DataHeader::serialize(char *buffer, const unsigned int size) const {
+int DataHeader::serialize(char *buffer, const unsigned int size) const {
     constexpr auto header_size = sizeof(DataHeader);
     static_assert(header_size == 16, "Size of header should match");
 
     // Not enough space in buffer
     if (size < header_size)
-        return 0;
+        return -1;
 
     auto header_data = reinterpret_cast<const char *>(this);
     std::memcpy(buffer, header_data, header_size);
     return header_size;
 }
 
-DataHeader DataHeader::deserialize(const char *buffer, unsigned int size) {
+std::optional<DataHeader> DataHeader::deserialize(const char *buffer, unsigned int size) {
     constexpr auto header_size = sizeof(DataHeader);
     static_assert(header_size == 16, "Size of header should match");
 
-    DataHeader header(0, DataType::INVALID, 0, 0);
-
     // Not enough space in buffer
     if (size < header_size)
-        return header;
+        return std::nullopt;
 
+    DataHeader header(0, DataType::INVALID, 0, 0);
     auto header_data = reinterpret_cast<char *>(&header);
     std::memcpy(header_data, buffer, header_size);
 

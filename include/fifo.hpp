@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <fstream>
-#include <mutex>
 #include <tuple>
 
 #include "communication_handler.hpp"
@@ -67,7 +66,6 @@ public:
 private:
     const std::string path_;
     int fd_ = -1;
-    std::mutex mutex_;
 
     std::uint32_t last_id_ = 0;
     char *buffer_;

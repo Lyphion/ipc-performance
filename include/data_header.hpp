@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <ostream>
+#include <optional>
 
 #include "data_type.hpp"
 
@@ -29,9 +30,9 @@ public:
      * @param buffer Buffer to serialize the header into.
      * @param size   Size of the buffer.
      *
-     * @return Total number of bytes written into the buffer.
+     * @return Total number of bytes written into the buffer or -1 if an error occurred.
      */
-    unsigned int serialize(char *buffer, unsigned int size) const;
+    int serialize(char *buffer, unsigned int size) const;
 
     /**
      * Check if this header is valid.
@@ -68,7 +69,7 @@ public:
      *
      * @return Deserialize header from buffer.
      */
-    static DataHeader deserialize(const char *buffer, unsigned int size);
+    static std::optional<DataHeader> deserialize(const char *buffer, unsigned int size);
 
 private:
     std::uint32_t id_;

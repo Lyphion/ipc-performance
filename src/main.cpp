@@ -68,10 +68,10 @@ int main(int argc, char *argv[]) {
         return 1;
 
     std::string path(argv[1]);
-    bool readonly = strtol(argv[2], nullptr, 10) != 0;
+    auto readonly = strtol(argv[2], nullptr, 10) != 0;
 
     ipc::Fifo pipe(path);
-    bool res = pipe.open();
+    auto res = pipe.open();
     if (!res) {
         std::cout << "Error opening pipe" << std::endl;
         return -1;
@@ -85,8 +85,10 @@ int main(int argc, char *argv[]) {
                 continue;
 
             auto option = pipe.read();
-            if (!option)
+            if (!option) {
+                std::cout << "Error while reading data" << std::endl;
                 continue;
+            }
 
             auto [header, data] = *option;
 
@@ -108,7 +110,11 @@ int main(int argc, char *argv[]) {
                     "test123"
             );
 
-            pipe.write(data);
+            res = pipe.write(data);
+            if (!res) {
+                std::cout << "Error while writing data" << std::endl;
+            }
+
             std::cout << "JavaSymbol" << data << std::endl;
 
             std::this_thread::sleep_for(std::chrono::seconds(1));

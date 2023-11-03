@@ -5,7 +5,7 @@
 
 namespace ipc {
 
-unsigned int JavaSymbol::serialize(char *buffer, unsigned int size) const {
+int JavaSymbol::serialize(char *buffer, unsigned int size) const {
     constexpr auto header_size = sizeof(JavaSymbol::address_)
                                  + sizeof(JavaSymbol::length_) + sizeof(std::uint32_t);
     static_assert(header_size == 16, "Size should match");
@@ -14,7 +14,7 @@ unsigned int JavaSymbol::serialize(char *buffer, unsigned int size) const {
 
     // Not enough space in buffer
     if (obj_size > size)
-        return 0;
+        return -1;
 
     auto offset = 0;
     std::memcpy(&buffer[offset], &this->address_, sizeof(JavaSymbol::address_));
@@ -29,10 +29,10 @@ unsigned int JavaSymbol::serialize(char *buffer, unsigned int size) const {
 
     std::memcpy(&buffer[offset], this->symbol_.data(), length);
 
-    return obj_size;
+    return static_cast<int>(obj_size);
 }
 
-JavaSymbol JavaSymbol::deserialize(const char *buffer, unsigned int size) {
+std::optional<JavaSymbol> JavaSymbol::deserialize(const char *buffer, unsigned int size) {
     constexpr auto header_size = sizeof(JavaSymbol::address_)
                                  + sizeof(JavaSymbol::length_) + sizeof(std::uint32_t);
     static_assert(header_size == 16, "Size should match");
@@ -42,7 +42,7 @@ JavaSymbol JavaSymbol::deserialize(const char *buffer, unsigned int size) {
 
     // Not enough space in buffer
     if (size < header_size)
-        return {0, 0, ""};
+        return std::nullopt;
 
     auto offset = 0;
     std::memcpy(&address, &buffer[offset], sizeof(address));
@@ -55,14 +55,17 @@ JavaSymbol JavaSymbol::deserialize(const char *buffer, unsigned int size) {
     offset += sizeof(symbol_length);
 
     // Not enough space in buffer or empty symbol
-    if (size < header_size + symbol_length || symbol_length == 0)
-        return {address, length, ""};
+    if (size < header_size + symbol_length)
+        return std::nullopt;
+
+    if (symbol_length == 0)
+        return JavaSymbol(address, length, "");
 
     std::string symbol;
     symbol.resize(symbol_length);
     std::memcpy(symbol.data(), &buffer[offset], symbol_length);
 
-    return {address, length, symbol};
+    return JavaSymbol(address, length, symbol);
 }
 
 std::ostream &operator<<(std::ostream &outs, const JavaSymbol &symbol) {
