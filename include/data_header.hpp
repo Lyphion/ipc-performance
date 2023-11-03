@@ -68,7 +68,7 @@ public:
      * @param buffer Buffer to deserialize the header from.
      * @param size   Size of the buffer.
      *
-     * @return Deserialize header from buffer.
+     * @return Deserialized header from buffer.
      */
     static std::optional<DataHeader> deserialize(const std::byte *buffer, unsigned int size);
 

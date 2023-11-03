@@ -3,7 +3,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <fstream>
 #include <tuple>
 
 #include "communication_handler.hpp"

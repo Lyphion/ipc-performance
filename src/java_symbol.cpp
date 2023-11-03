@@ -54,10 +54,11 @@ std::optional<JavaSymbol> JavaSymbol::deserialize(const std::byte *buffer, unsig
     std::memcpy(&symbol_length, &buffer[offset], sizeof(symbol_length));
     offset += sizeof(symbol_length);
 
-    // Not enough space in buffer or empty symbol
+    // Not enough space in buffer
     if (size < header_size + symbol_length)
         return std::nullopt;
 
+    // Empty symbol name
     if (symbol_length == 0)
         return JavaSymbol(address, length, "");
 

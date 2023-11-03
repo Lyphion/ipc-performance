@@ -24,9 +24,6 @@ public:
     JavaSymbol(std::uint64_t address, std::uint32_t length, std::string symbol)
             : address_(address), length_(length), symbol_(std::move(symbol)) {}
 
-    /**
-     * Default destructor.
-     */
     ~JavaSymbol() override = default;
 
     int serialize(std::byte *buffer, unsigned int size) const override;
@@ -54,7 +51,7 @@ public:
      * @param buffer Buffer to deserialize the object from.
      * @param size   Size of the buffer.
      *
-     * @return Deserialize object from buffer.
+     * @return Deserialized object from buffer.
      */
     static std::optional<JavaSymbol> deserialize(const std::byte *buffer, unsigned int size);
 

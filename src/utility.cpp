@@ -1,16 +1,15 @@
 #include "../include/utility.hpp"
 
+#include <chrono>
 #include <iostream>
 #include <iomanip>
-#include <chrono>
 
-void print_array(const char *data, int size) {
+void print_array(const std::byte *data, unsigned int size) {
     std::ios_base::fmtflags f(std::cout.flags());
 
     std::cout << std::setfill('0') << std::hex;
-    for (auto i = 0; i < size; i++) {
-        auto val = static_cast<int>(data[i]) & 0xff;
-        std::cout << std::setw(sizeof(char) * 2) << val;
+    for (unsigned int i = 0; i < size; i++) {
+        std::cout << std::setw(sizeof(char) * 2) << static_cast<int>(data[i]);
     }
 
     std::cout << std::endl;

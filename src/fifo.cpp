@@ -1,9 +1,11 @@
 #include "../include/fifo.hpp"
 
+extern "C" {
 #include <fcntl.h>
-#include <poll.h>
+#include <sys/poll.h>
 #include <sys/stat.h>
 #include <unistd.h>
+}
 
 #include "../include/utility.hpp"
 
@@ -25,9 +27,8 @@ bool Fifo::open() {
 
     // Create pipe
     int res = mkfifo(path_.c_str(), 0666);
-    if (!res) {
+    if (!res)
         return false;
-    }
 
     // Open pipe
     fd_ = ::open(path_.c_str(), O_RDWR | O_NONBLOCK);
@@ -136,9 +137,7 @@ std::optional<std::tuple<DataHeader, DataObject>> Fifo::read() {
             if (!data)
                 return std::nullopt;
 
-            return std::make_tuple(
-                    header, *data
-            );
+            return std::make_tuple(header, *data);
         }
     }
 

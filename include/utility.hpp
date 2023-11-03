@@ -1,14 +1,15 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 /**
- * Print byte array tp console.
+ * Print byte array to console.
  *
  * @param data Byte array to print.
  * @param size Size of array.
  */
-void print_array(const char *data, int size);
+void print_array(const std::byte *data, unsigned int size);
 
 /**
  * Get the current timestamp since epoch in nanoseconds.
