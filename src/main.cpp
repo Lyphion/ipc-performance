@@ -5,6 +5,7 @@
 
 #include "../include/data_header.hpp"
 #include "../include/java_symbol.hpp"
+#include "../include/datagram_socket.hpp"
 #include "../include/fifo.hpp"
 
 // helper type for the visitor
@@ -23,21 +24,18 @@ int main(int argc, char *argv[]) {
     std::string path(argv[1]);
     auto readonly = strtol(argv[2], nullptr, 10) != 0;
 
-    ipc::Fifo pipe(path);
-    auto res = pipe.open();
+    ipc::DatagramSocket socket(path, readonly);
+    auto res = socket.open();
     if (!res) {
-        std::cout << "Error opening pipe" << std::endl;
+        std::cout << "Error opening socket" << std::endl;
         return EXIT_FAILURE;
     }
 
-    std::cout << "Pipe opened" << std::endl;
+    std::cout << "Socket opened" << std::endl;
 
     while (true) {
         if (readonly) {
-            if (!pipe.await_data())
-                continue;
-
-            auto option = pipe.read();
+            auto option = socket.read();
             if (!option) {
                 std::cout << "Error while reading data" << std::endl;
                 continue;
@@ -63,7 +61,7 @@ int main(int argc, char *argv[]) {
                     "test123"
             );
 
-            res = pipe.write(data);
+            res = socket.write(data);
             if (!res) {
                 std::cout << "Error while writing data" << std::endl;
             }

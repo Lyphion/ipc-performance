@@ -23,4 +23,6 @@ add_executable(IPC src/main.cpp
         src/fifo.cpp
         include/utility.hpp
         src/utility.cpp
+        include/datagram_socket.hpp
+        src/datagram_socket.cpp
 )
