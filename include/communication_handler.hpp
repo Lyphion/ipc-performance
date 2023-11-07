@@ -20,6 +20,21 @@ using DataObject = std::variant<JavaSymbol>;
 class ICommunicationHandler {
 public:
     /**
+     * Poll new data from the handler.
+     *
+     * @return True, if poll was successful.
+     * @remark Method will block until an event occurred.
+     */
+    virtual bool await_data() const = 0;
+
+    /**
+     * Check if new data is available.
+     *
+     * @return True, if data is available.
+     */
+    virtual bool has_data() const = 0;
+
+    /**
      * Write a data object into the inter-process communication handler.
      *
      * @param obj Object to write into the handler.

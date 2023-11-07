@@ -65,7 +65,10 @@ bool MessageQueue::await_data() const {
     pfd.events = POLLIN;
 
     // Poll events and block until one is available
-    auto res = ::poll(&pfd, 1, -1);
+    auto res = poll(&pfd, 1, -1);
+    if (res == -1)
+        perror("MessageQueue::await_data (poll)");
+
     return res != -1;
 }
 
@@ -79,7 +82,10 @@ bool MessageQueue::has_data() const {
     pfd.events = POLLIN;
 
     // Poll events and block for 1ms
-    auto res = ::poll(&pfd, 1, 1);
+    auto res = poll(&pfd, 1, 1);
+    if (res == -1)
+        perror("MessageQueue::has_data (poll)");
+
     return res > 0;
 }
 
@@ -102,6 +108,9 @@ bool MessageQueue::write(const IDataObject &obj) {
 
     // Write data into message queue
     auto res = mq_send(mqd_, reinterpret_cast<const char *>(buffer_.data()), header_size + size, 0);
+    if (res == -1)
+        perror("MessageQueue::write (mq_send)");
+
     return res != -1;
 }
 
@@ -114,8 +123,10 @@ std::optional<std::tuple<DataHeader, DataObject>> MessageQueue::read() {
 
     // Read data from message queue
     auto result = mq_receive(mqd_, reinterpret_cast<char *>(buffer_.data()), BUFFER_SIZE, nullptr);
-    if (result <= 0)
+    if (result == -1) {
+        perror("MessageQueue::read (mq_receive)");
         return std::nullopt;
+    }
 
     // Deserialize header
     auto optional = DataHeader::deserialize(buffer_.data(), result);
@@ -138,7 +149,6 @@ std::optional<std::tuple<DataHeader, DataObject>> MessageQueue::read() {
             return std::make_tuple(header, *data);
         }
     }
-
 
     return std::nullopt;
 }

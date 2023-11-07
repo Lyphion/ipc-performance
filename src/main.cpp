@@ -53,14 +53,14 @@ int main(int argc, char *argv[]) {
 
             std::cout << "Header" << header << " - " << i << std::endl;
             std::visit(overloaded{
-                    [](ipc::JavaSymbol &symbol) {
+                    [](const ipc::JavaSymbol &symbol) {
                         std::cout << "JavaSymbol" << symbol << std::endl;
                     }
             }, data);
             i++;
 
-            if (i % 20 == 0)
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            if (rand() % 25 == 0)
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
         } else {
             ipc::JavaSymbol data(
                     static_cast<std::int64_t>(rand()) << 32 | rand(),
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
             std::cout << "JavaSymbol" << data << " - " << i << std::endl;
             i++;
 
-            //std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
 

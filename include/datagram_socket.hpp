@@ -54,6 +54,10 @@ public:
      */
     bool close();
 
+    bool await_data() const override;
+
+    bool has_data() const override;
+
     bool write(const IDataObject &obj) override;
 
     std::optional<std::tuple<DataHeader, DataObject>> read() override;

@@ -70,7 +70,10 @@ bool Fifo::await_data() const {
     pfd.events = POLLIN;
 
     // Poll events and block until one is available
-    auto res = ::poll(&pfd, 1, -1);
+    auto res = poll(&pfd, 1, -1);
+    if (res == -1)
+        perror("Fifo::await_data (poll)");
+
     return res != -1;
 }
 
@@ -84,7 +87,10 @@ bool Fifo::has_data() const {
     pfd.events = POLLIN;
 
     // Poll events and block for 1ms
-    auto res = ::poll(&pfd, 1, 1);
+    auto res = poll(&pfd, 1, 1);
+    if (res == -1)
+        perror("Fifo::has_data (poll)");
+
     return res > 0;
 }
 
@@ -107,6 +113,10 @@ bool Fifo::write(const IDataObject &obj) {
 
     // Write data into pipe
     auto res = ::write(fd_, buffer_.data(), header_size + size);
+
+    if (res == -1)
+        perror("Fifo::write (write)");
+
     return res != -1;
 }
 
@@ -119,7 +129,12 @@ std::optional<std::tuple<DataHeader, DataObject>> Fifo::read() {
 
     // Read data from pipe
     auto result = ::read(fd_, buffer_.data(), header_size);
-    if (result <= 0)
+    if (result == -1) {
+        perror("Fifo::read (read)");
+        return std::nullopt;
+    }
+
+    if (result == 0)
         return std::nullopt;
 
     assert(header_size == result);
@@ -132,7 +147,12 @@ std::optional<std::tuple<DataHeader, DataObject>> Fifo::read() {
     auto header = *optional;
 
     result = ::read(fd_, buffer_.data(), header.get_body_size());
-    if (result <= 0)
+    if (result == -1) {
+        perror("Fifo::read (read)");
+        return std::nullopt;
+    }
+
+    if (result == 0)
         return std::nullopt;
 
     assert(header.get_body_size() == result);

@@ -40,20 +40,9 @@ public:
      */
     bool close();
 
-    /**
-     * Poll new data from the pipe.
-     *
-     * @return True, if poll was successful.
-     * @remark Method will block until an event occurred.
-     */
-    bool await_data() const;
+    bool await_data() const override;
 
-    /**
-     * Check if new data is available.
-     *
-     * @return True, if data is available.
-     */
-    bool has_data() const;
+    bool has_data() const override;
 
     bool write(const IDataObject &obj) override;
 

@@ -2,6 +2,7 @@
 
 extern "C" {
 #include <arpa/inet.h>
+#include <sys/poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 }
@@ -62,8 +63,10 @@ bool DatagramSocket::create_server() {
 
         // Bind socket for listing
         auto address = std::get<0>(address_);
-        if (bind(sfd_, reinterpret_cast<sockaddr *>(&address), sizeof(sockaddr_un)) == -1)
+        if (bind(sfd_, reinterpret_cast<sockaddr *>(&address), sizeof(sockaddr_un)) == -1) {
+            perror("DatagramSocket::create_server (bind)");
             return false;
+        }
     } else {
         sfd_ = socket(AF_INET, SOCK_DGRAM, 0);
         if (sfd_ == -1) {
@@ -77,8 +80,10 @@ bool DatagramSocket::create_server() {
 
         // Bind socket for listing
         auto address = std::get<1>(address_);
-        if (bind(sfd_, reinterpret_cast<sockaddr *>(&address), sizeof(sockaddr_in)) == -1)
+        if (bind(sfd_, reinterpret_cast<sockaddr *>(&address), sizeof(sockaddr_in)) == -1) {
+            perror("DatagramSocket::create_server (bind)");
             return false;
+        }
     }
 
     return true;
@@ -103,8 +108,10 @@ bool DatagramSocket::create_client() {
 
         // Bind socket for listing
         auto c_addr = *client_address_;
-        if (bind(sfd_, reinterpret_cast<sockaddr *>(&c_addr), sizeof(sockaddr_un)) == -1)
+        if (bind(sfd_, reinterpret_cast<sockaddr *>(&c_addr), sizeof(sockaddr_un)) == -1) {
+            perror("DatagramSocket::create_client (bind)");
             return false;
+        }
         */
     } else {
         sfd_ = socket(AF_INET, SOCK_DGRAM, 0);
@@ -139,8 +146,43 @@ bool DatagramSocket::close() {
     return true;
 }
 
+bool DatagramSocket::await_data() const {
+    // Check if socket is open
+    if (sfd_ == -1)
+        return false;
+
+    pollfd pfd{};
+    pfd.fd = sfd_;
+    pfd.events = POLLIN;
+
+    // Poll events and block until one is available
+    auto res = ::poll(&pfd, 1, -1);
+    if (res == -1)
+        perror("DatagramSocket::await_data (poll)");
+
+    return res != -1;
+}
+
+bool DatagramSocket::has_data() const {
+    // Check if socket is open
+    if (sfd_ == -1)
+        return false;
+
+    pollfd pfd{};
+    pfd.fd = sfd_;
+    pfd.events = POLLIN;
+
+    // Poll events and block for 1ms
+    auto res = ::poll(&pfd, 1, 1);
+    if (res == -1)
+        perror("DatagramSocket::has_data (poll)");
+
+    return res > 0;
+}
+
 bool DatagramSocket::write(const IDataObject &obj) {
     constexpr auto header_size = sizeof(DataHeader);
+
     // Check if socket is open
     if (sfd_ == -1)
         return false;
@@ -165,6 +207,9 @@ bool DatagramSocket::write(const IDataObject &obj) {
         res = sendto(sfd_, buffer_.data(), header_size + size, 0, address, sizeof(sockaddr_in));
     }
 
+    if (res == -1)
+        perror("DatagramSocket::write (sendto)");
+
     return res != -1;
 }
 
@@ -177,8 +222,10 @@ std::optional<std::tuple<DataHeader, DataObject>> DatagramSocket::read() {
 
     // Read data from socket
     auto result = recvfrom(sfd_, buffer_.data(), BUFFER_SIZE, 0, nullptr, nullptr);
-    if (result == -1)
+    if (result == -1) {
+        perror("DatagramSocket::read (recvfrom)");
         return std::nullopt;
+    }
 
     // Deserialize header
     auto optional = DataHeader::deserialize(buffer_.data(), result);
