@@ -56,7 +56,7 @@ public:
 
     bool write(const IDataObject &obj) override;
 
-    std::vector<std::tuple<DataHeader, DataObject>> read() override;
+    std::optional<std::tuple<DataHeader, DataObject>> read() override;
 
 private:
     /**

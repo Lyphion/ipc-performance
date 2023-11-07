@@ -110,54 +110,49 @@ bool Fifo::write(const IDataObject &obj) {
     return res != -1;
 }
 
-std::vector<std::tuple<DataHeader, DataObject>> Fifo::read() {
+std::optional<std::tuple<DataHeader, DataObject>> Fifo::read() {
     constexpr auto header_size = sizeof(DataHeader);
 
     // Check if pipe is open
     if (fd_ == -1)
-        return {};
-
-    std::vector<std::tuple<DataHeader, DataObject>> objects{};
+        return std::nullopt;
 
     // Read data from pipe
-    long result;
-    while (true) {
-        result = ::read(fd_, buffer_.data(), header_size);
-        if (result <= 0)
+    auto result = ::read(fd_, buffer_.data(), header_size);
+    if (result <= 0)
+        return std::nullopt;
+
+    assert(header_size == result);
+
+    // Deserialize header
+    auto optional = DataHeader::deserialize(buffer_.data(), result);
+    if (!optional)
+        return std::nullopt;
+
+    auto header = *optional;
+
+    result = ::read(fd_, buffer_.data(), header.get_body_size());
+    if (result <= 0)
+        return std::nullopt;
+
+    assert(header.get_body_size() == result);
+
+    // Handle each type differently
+    switch (header.get_type()) {
+        case DataType::INVALID:
             break;
 
-        assert(header_size == result);
+        case DataType::JAVA_SYMBOL_LOOKUP: {
+            // Deserialize Java Symbols
+            auto data = JavaSymbol::deserialize(buffer_.data(), result);
+            if (!data)
+                return std::nullopt;
 
-        // Deserialize header
-        auto optional = DataHeader::deserialize(buffer_.data(), result);
-        if (!optional)
-            continue;
-
-        auto header = *optional;
-
-        result = ::read(fd_, buffer_.data(), header.get_body_size());
-        if (result <= 0)
-            break;
-
-        assert(header.get_body_size() == result);
-
-        // Handle each type differently
-        switch (header.get_type()) {
-            case DataType::INVALID:
-                continue;
-
-            case DataType::JAVA_SYMBOL_LOOKUP: {
-                // Deserialize Java Symbols
-                auto data = JavaSymbol::deserialize(buffer_.data(), result);
-                if (!data)
-                    continue;
-
-                objects.emplace_back(header, *data);
-            }
+            return std::make_tuple(header, *data);
         }
     }
 
-    return objects;
+    return std::nullopt;
 }
 
 }

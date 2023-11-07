@@ -1,9 +1,9 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <tuple>
 #include <variant>
-#include <vector>
 
 #include "data_object.hpp"
 #include "data_header.hpp"
@@ -31,7 +31,7 @@ public:
      *
      * @return Objects received from the handler.
      */
-    virtual std::vector<std::tuple<DataHeader, DataObject>> read() = 0;
+    virtual std::optional<std::tuple<DataHeader, DataObject>> read() = 0;
 };
 
 }

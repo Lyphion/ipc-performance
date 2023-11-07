@@ -168,22 +168,22 @@ bool DatagramSocket::write(const IDataObject &obj) {
     return res != -1;
 }
 
-std::vector<std::tuple<DataHeader, DataObject>> DatagramSocket::read() {
+std::optional<std::tuple<DataHeader, DataObject>> DatagramSocket::read() {
     constexpr auto header_size = sizeof(DataHeader);
 
     // Check if socket is open
     if (sfd_ == -1)
-        return {};
+        return std::nullopt;
 
     // Read data from socket
-    auto res = recvfrom(sfd_, buffer_.data(), BUFFER_SIZE, 0, nullptr, nullptr);
-    if (res == -1)
-        return {};
+    auto result = recvfrom(sfd_, buffer_.data(), BUFFER_SIZE, 0, nullptr, nullptr);
+    if (result == -1)
+        return std::nullopt;
 
     // Deserialize header
-    auto optional = DataHeader::deserialize(buffer_.data(), res);
+    auto optional = DataHeader::deserialize(buffer_.data(), result);
     if (!optional)
-        return {};
+        return std::nullopt;
 
     auto header = *optional;
 
@@ -194,16 +194,16 @@ std::vector<std::tuple<DataHeader, DataObject>> DatagramSocket::read() {
 
         case DataType::JAVA_SYMBOL_LOOKUP: {
             // Deserialize Java Symbols
-            auto data = JavaSymbol::deserialize(&buffer_[header_size], res - header_size);
+            auto data = JavaSymbol::deserialize(&buffer_[header_size], result - header_size);
             if (!data)
-                return {};
+                return std::nullopt;
 
-            return {std::make_tuple(header, *data)};
+            return std::make_tuple(header, *data);
         }
     }
 
     // Unknown or invalid type
-    return {};
+    return std::nullopt;
 }
 
 bool DatagramSocket::build_address() {

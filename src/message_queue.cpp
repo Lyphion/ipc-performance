@@ -105,47 +105,42 @@ bool MessageQueue::write(const IDataObject &obj) {
     return res != -1;
 }
 
-std::vector<std::tuple<DataHeader, DataObject>> MessageQueue::read() {
+std::optional<std::tuple<DataHeader, DataObject>> MessageQueue::read() {
     constexpr auto header_size = sizeof(DataHeader);
 
     // Check if message queue is open
     if (mqd_ == -1)
-        return {};
-
-    std::vector<std::tuple<DataHeader, DataObject>> objects{};
+        return std::nullopt;
 
     // Read data from message queue
-    long result;
-    while (true) {
-        result = mq_receive(mqd_, reinterpret_cast<char *>(buffer_.data()), BUFFER_SIZE, nullptr);
-        if (result <= 0) {
+    auto result = mq_receive(mqd_, reinterpret_cast<char *>(buffer_.data()), BUFFER_SIZE, nullptr);
+    if (result <= 0)
+        return std::nullopt;
+
+    // Deserialize header
+    auto optional = DataHeader::deserialize(buffer_.data(), result);
+    if (!optional)
+        return std::nullopt;
+
+    auto header = *optional;
+
+    // Handle each type differently
+    switch (header.get_type()) {
+        case DataType::INVALID:
             break;
-        }
 
-        // Deserialize header
-        auto optional = DataHeader::deserialize(buffer_.data(), result);
-        if (!optional)
-            continue;
+        case DataType::JAVA_SYMBOL_LOOKUP: {
+            // Deserialize Java Symbols
+            auto data = JavaSymbol::deserialize(&buffer_[header_size], result - header_size);
+            if (!data)
+                return std::nullopt;
 
-        auto header = *optional;
-
-        // Handle each type differently
-        switch (header.get_type()) {
-            case DataType::INVALID:
-                continue;
-
-            case DataType::JAVA_SYMBOL_LOOKUP: {
-                // Deserialize Java Symbols
-                auto data = JavaSymbol::deserialize(&buffer_[header_size], result - header_size);
-                if (!data)
-                    continue;
-
-                objects.emplace_back(header, *data);
-            }
+            return std::make_tuple(header, *data);
         }
     }
 
-    return objects;
+
+    return std::nullopt;
 }
 
 }

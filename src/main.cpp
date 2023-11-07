@@ -3,9 +3,6 @@
 #include <iostream>
 #include <thread>
 
-#include "../include/data_header.hpp"
-#include "../include/java_symbol.hpp"
-
 #include "../include/datagram_socket.hpp"
 #include "../include/fifo.hpp"
 #include "../include/message_queue.hpp"
@@ -41,28 +38,29 @@ int main(int argc, char *argv[]) {
             if (!handler.await_data())
                 continue;
 
-            auto vec = handler.read();
-            if (vec.empty()) {
+            auto option = handler.read();
+            if (!option) {
                 std::cout << "Error while reading data" << std::endl;
                 continue;
             }
 
-            for (auto &[header, data]: vec) {
-                if (!header.is_valid()) {
-                    std::cout << "Invalid data received" << std::endl;
-                    continue;
-                }
+            auto [header, data] = *option;
 
-                std::cout << "Header" << header << " - " << i << std::endl;
-                std::visit(overloaded{
-                        [](ipc::JavaSymbol &symbol) {
-                            std::cout << "JavaSymbol" << symbol << std::endl;
-                        }
-                }, data);
-                i++;
+            if (!header.is_valid()) {
+                std::cout << "Invalid data received" << std::endl;
+                continue;
             }
 
-            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::cout << "Header" << header << " - " << i << std::endl;
+            std::visit(overloaded{
+                    [](ipc::JavaSymbol &symbol) {
+                        std::cout << "JavaSymbol" << symbol << std::endl;
+                    }
+            }, data);
+            i++;
+
+            if (i % 20 == 0)
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
         } else {
             ipc::JavaSymbol data(
                     static_cast<std::int64_t>(rand()) << 32 | rand(),
