@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     std::string path(argv[1]);
     auto readonly = strcmp(argv[2], "reader") == 0;
 
-    ipc::Fifo handler(path, readonly);
+    ipc::MessageQueue handler(path, readonly);
     auto res = handler.open();
     if (!res) {
         std::cout << "Error opening handler" << std::endl;
