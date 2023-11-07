@@ -16,9 +16,10 @@ public:
     /**
      * Create a new Fifo pipe.
      *
-     * @param path Path to the pipe.
+     * @param path     Path to the pipe.
+     * @param readonly Whether the pipe is for read only.
      */
-    explicit Fifo(std::string path);
+    Fifo(std::string path, bool readonly);
 
     /**
      * Destructor for this object to cleanup data and close pipe.
@@ -45,18 +46,18 @@ public:
      * @return True, if poll was successful.
      * @remark Method will block until an event occurred.
      */
-    bool await_data();
+    bool await_data() const;
 
     /**
      * Check if new data is available.
      *
      * @return True, if data is available.
      */
-    bool has_data();
+    bool has_data() const;
 
     bool write(const IDataObject &obj) override;
 
-    std::optional<std::tuple<DataHeader, DataObject>> read() override;
+    std::vector<std::tuple<DataHeader, DataObject>> read() override;
 
     /**
      * Path of the pipe.
@@ -65,6 +66,7 @@ public:
 
 private:
     const std::string path_;
+    const bool readonly_;
     int fd_ = -1;
 
     std::uint32_t last_id_ = 0;

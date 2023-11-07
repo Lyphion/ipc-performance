@@ -1,5 +1,7 @@
 #include "../include/fifo.hpp"
 
+#include <cassert>
+
 extern "C" {
 #include <fcntl.h>
 #include <sys/poll.h>
@@ -11,7 +13,8 @@ extern "C" {
 
 namespace ipc {
 
-Fifo::Fifo(std::string path) : path_(std::move(path)) {}
+Fifo::Fifo(std::string path, bool readonly)
+        : path_(std::move(path)), readonly_(readonly) {}
 
 Fifo::~Fifo() {
     // Close pipe if open
@@ -27,12 +30,16 @@ bool Fifo::open() {
 
     // Create pipe
     int res = mkfifo(path_.c_str(), 0666);
-    if (!res)
+    if (!res) {
+        perror("Fifo::open (mkfifo)");
         return false;
+    }
 
     // Open pipe
-    fd_ = ::open(path_.c_str(), O_RDWR | O_NONBLOCK);
+    auto flag = readonly_ ? O_RDWR | O_NONBLOCK : O_RDWR;
+    fd_ = ::open(path_.c_str(), flag);
     if (fd_ == -1) {
+        perror("Fifo::open (open)");
         unlink(path_.c_str());
         return false;
     }
@@ -46,39 +53,35 @@ bool Fifo::close() {
         return false;
 
     // Close and unlink pipe
-    unlink(path_.c_str());
     ::close(fd_);
+    unlink(path_.c_str());
     fd_ = -1;
 
     return true;
 }
 
-bool Fifo::await_data() {
+bool Fifo::await_data() const {
     // Check if pipe is open
     if (fd_ == -1)
         return false;
 
-    pollfd pfd{
-            .fd = fd_,
-            .events = POLLIN,
-            .revents = 0
-    };
+    pollfd pfd{};
+    pfd.fd = fd_;
+    pfd.events = POLLIN;
 
     // Poll events and block until one is available
     auto res = ::poll(&pfd, 1, -1);
     return res != -1;
 }
 
-bool Fifo::has_data() {
+bool Fifo::has_data() const {
     // Check if pipe is open
     if (fd_ == -1)
         return false;
 
-    pollfd pfd{
-            .fd = fd_,
-            .events = POLLIN,
-            .revents = 0
-    };
+    pollfd pfd{};
+    pfd.fd = fd_;
+    pfd.events = POLLIN;
 
     // Poll events and block for 1ms
     auto res = ::poll(&pfd, 1, 1);
@@ -107,42 +110,54 @@ bool Fifo::write(const IDataObject &obj) {
     return res != -1;
 }
 
-std::optional<std::tuple<DataHeader, DataObject>> Fifo::read() {
+std::vector<std::tuple<DataHeader, DataObject>> Fifo::read() {
     constexpr auto header_size = sizeof(DataHeader);
 
     // Check if pipe is open
     if (fd_ == -1)
-        return std::nullopt;
+        return {};
+
+    std::vector<std::tuple<DataHeader, DataObject>> objects{};
 
     // Read data from pipe
-    auto res = ::read(fd_, buffer_.data(), BUFFER_SIZE);
-    if (res == -1 || res == 0)
-        return std::nullopt;
-
-    // Deserialize header
-    auto optional = DataHeader::deserialize(buffer_.data(), BUFFER_SIZE);
-    if (!optional)
-        return std::nullopt;
-
-    auto header = *optional;
-
-    // Handle each type differently
-    switch (header.get_type()) {
-        case DataType::INVALID:
+    long result;
+    while (true) {
+        result = ::read(fd_, buffer_.data(), header_size);
+        if (result <= 0)
             break;
 
-        case DataType::JAVA_SYMBOL_LOOKUP: {
-            // Deserialize Java Symbols
-            auto data = JavaSymbol::deserialize(&buffer_[header_size], BUFFER_SIZE - header_size);
-            if (!data)
-                return std::nullopt;
+        assert(header_size == result);
 
-            return std::make_tuple(header, *data);
+        // Deserialize header
+        auto optional = DataHeader::deserialize(buffer_.data(), result);
+        if (!optional)
+            continue;
+
+        auto header = *optional;
+
+        result = ::read(fd_, buffer_.data(), header.get_body_size());
+        if (result <= 0)
+            break;
+
+        assert(header.get_body_size() == result);
+
+        // Handle each type differently
+        switch (header.get_type()) {
+            case DataType::INVALID:
+                continue;
+
+            case DataType::JAVA_SYMBOL_LOOKUP: {
+                // Deserialize Java Symbols
+                auto data = JavaSymbol::deserialize(buffer_.data(), result);
+                if (!data)
+                    continue;
+
+                objects.emplace_back(header, *data);
+            }
         }
     }
 
-    // Unknown or invalid type
-    return std::nullopt;
+    return objects;
 }
 
 }

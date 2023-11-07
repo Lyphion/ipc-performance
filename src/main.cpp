@@ -5,8 +5,10 @@
 
 #include "../include/data_header.hpp"
 #include "../include/java_symbol.hpp"
+
 #include "../include/datagram_socket.hpp"
 #include "../include/fifo.hpp"
+#include "../include/message_queue.hpp"
 
 // helper type for the visitor
 template<class... Ts>
@@ -22,38 +24,45 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
 
     std::string path(argv[1]);
-    auto readonly = strtol(argv[2], nullptr, 10) != 0;
+    auto readonly = strcmp(argv[2], "reader") == 0;
 
-    ipc::DatagramSocket socket(path, readonly);
-    auto res = socket.open();
+    ipc::Fifo handler(path, readonly);
+    auto res = handler.open();
     if (!res) {
-        std::cout << "Error opening socket" << std::endl;
+        std::cout << "Error opening handler" << std::endl;
         return EXIT_FAILURE;
     }
 
-    std::cout << "Socket opened" << std::endl;
+    std::cout << "Handler opened (readonly=" << readonly << ')' << std::endl;
 
+    int i = 1;
     while (true) {
         if (readonly) {
-            auto option = socket.read();
-            if (!option) {
+            if (!handler.await_data())
+                continue;
+
+            auto vec = handler.read();
+            if (vec.empty()) {
                 std::cout << "Error while reading data" << std::endl;
                 continue;
             }
 
-            auto [header, data] = *option;
+            for (auto &[header, data]: vec) {
+                if (!header.is_valid()) {
+                    std::cout << "Invalid data received" << std::endl;
+                    continue;
+                }
 
-            if (!header.is_valid()) {
-                std::cout << "Invalid data received" << std::endl;
-                continue;
+                std::cout << "Header" << header << " - " << i << std::endl;
+                std::visit(overloaded{
+                        [](ipc::JavaSymbol &symbol) {
+                            std::cout << "JavaSymbol" << symbol << std::endl;
+                        }
+                }, data);
+                i++;
             }
 
-            std::cout << "Header" << header << std::endl;
-            std::visit(overloaded{
-                    [](ipc::JavaSymbol &symbol) {
-                        std::cout << "JavaSymbol" << symbol << std::endl;
-                    }
-            }, data);
+            std::this_thread::sleep_for(std::chrono::seconds(5));
         } else {
             ipc::JavaSymbol data(
                     static_cast<std::int64_t>(rand()) << 32 | rand(),
@@ -61,14 +70,15 @@ int main(int argc, char *argv[]) {
                     "test123"
             );
 
-            res = socket.write(data);
+            res = handler.write(data);
             if (!res) {
                 std::cout << "Error while writing data" << std::endl;
             }
 
-            std::cout << "JavaSymbol" << data << std::endl;
+            std::cout << "JavaSymbol" << data << " - " << i << std::endl;
+            i++;
 
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            //std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
 

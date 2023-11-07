@@ -1,9 +1,9 @@
 #pragma once
 
 #include <memory>
-#include <optional>
 #include <tuple>
 #include <variant>
+#include <vector>
 
 #include "data_object.hpp"
 #include "data_header.hpp"
@@ -27,13 +27,11 @@ public:
     virtual bool write(const IDataObject &obj) = 0;
 
     /**
-     * Read a data object from the inter-process communication handler.
+     * Read a data objects from the inter-process communication handler.
      *
-     * @param header Received header of the object.
-     *
-     * @return Object received from the handler.
+     * @return Objects received from the handler.
      */
-    virtual std::optional<std::tuple<DataHeader, DataObject>> read() = 0;
+    virtual std::vector<std::tuple<DataHeader, DataObject>> read() = 0;
 };
 
 }
