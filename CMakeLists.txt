@@ -27,4 +27,6 @@ add_executable(IPC src/main.cpp
         src/datagram_socket.cpp
         include/message_queue.hpp
         src/message_queue.cpp
+        include/stream_socket.hpp
+        src/stream_socket.cpp
 )

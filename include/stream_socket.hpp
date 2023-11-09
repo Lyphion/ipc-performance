@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 extern "C" {
 #include <netinet/in.h>
@@ -13,10 +14,13 @@ extern "C" {
 
 namespace ipc {
 
-class DatagramSocket : public ICommunicationHandler {
+class StreamSocket : public ICommunicationHandler {
 public:
     /// Size of the buffer and limit of header and body combined.
     static constexpr short BUFFER_SIZE = 512;
+
+    /// Maximum number of waiting socket connections.
+    static constexpr unsigned char BACKLOG = 5;
 
     /**
      * Create a new unix domain Socket.
@@ -24,7 +28,7 @@ public:
      * @param path   Path to the socket.
      * @param server Whether this socket is the server.
      */
-    DatagramSocket(std::string path, bool server);
+    StreamSocket(std::string path, bool server);
 
     /**
      * Create a new internet domain Socket.
@@ -33,12 +37,12 @@ public:
      * @param port    Port of the socket.
      * @param server  Whether this socket is the server.
      */
-    DatagramSocket(std::string address, std::uint16_t port, bool server);
+    StreamSocket(std::string address, std::uint16_t port, bool server);
 
     /**
      * Destructor for this object to cleanup data and close socket.
      */
-    ~DatagramSocket();
+    ~StreamSocket();
 
     /**
      * Create a new socket.
@@ -54,6 +58,14 @@ public:
      */
     bool close();
 
+    /**
+     * Accept new clients.
+     *
+     * @return True, if a socket was accepted.
+     * @remark Method will block until an event occurred.
+     */
+    bool accept();
+
     bool await_data() const override;
 
     bool has_data() const override;
@@ -64,9 +76,9 @@ public:
 
 private:
     /**
-     * Build addresses for server and client.
+     * Build addresses for server.
      *
-     * @return True, if addresses where build successfully.
+     * @return True, if address was build successfully.
      */
     bool build_address();
 
@@ -92,10 +104,10 @@ private:
 private:
     const std::tuple<std::string, std::optional<std::uint16_t>> parameters_;
     std::variant<sockaddr_un, sockaddr_in> address_;
-    // std::optional<sockaddr_un> client_address_;
     const bool server_;
     const bool unix_;
     int sfd_ = -1;
+    int cfd_ = -1;
 
     std::uint32_t last_id_ = 0;
     std::array<std::byte, BUFFER_SIZE> buffer_{};
