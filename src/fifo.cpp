@@ -28,11 +28,15 @@ bool Fifo::open() {
     if (fd_ != -1)
         return true;
 
-    // Create pipe
-    int res = mkfifo(path_.c_str(), 0666);
-    if (!res) {
-        perror("Fifo::open (mkfifo)");
-        return false;
+    if (readonly_) {
+        // Create pipe
+        unlink(path_.c_str());
+
+        auto res = mkfifo(path_.c_str(), 0660);
+        if (res == -1) {
+            perror("Fifo::open (mkfifo)");
+            return false;
+        }
     }
 
     // Open pipe
@@ -120,59 +124,65 @@ bool Fifo::write(const IDataObject &obj) {
     return res != -1;
 }
 
-std::optional<std::tuple<DataHeader, DataObject>> Fifo::read() {
+std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> Fifo::read() {
     constexpr auto header_size = sizeof(DataHeader);
 
     // Check if pipe is open
     if (fd_ == -1)
-        return std::nullopt;
+        return CommunicationError::CONNECTION_CLOSED;
 
     // Read data from pipe
     auto result = ::read(fd_, buffer_.data(), header_size);
     if (result == -1) {
+        if (errno == EAGAIN)
+            return CommunicationError::NO_DATA_AVAILABLE;
+
         perror("Fifo::read (read)");
-        return std::nullopt;
+        return CommunicationError::READ_ERROR;
     }
 
     if (result == 0)
-        return std::nullopt;
+        return CommunicationError::NO_DATA_AVAILABLE;
 
     assert(header_size == result);
 
     // Deserialize header
     auto optional = DataHeader::deserialize(buffer_.data(), result);
     if (!optional)
-        return std::nullopt;
+        return CommunicationError::INVALID_HEADER;
 
     auto header = *optional;
 
     result = ::read(fd_, buffer_.data(), header.get_body_size());
     if (result == -1) {
+        if (errno == EAGAIN)
+            return CommunicationError::NO_DATA_AVAILABLE;
+
         perror("Fifo::read (read)");
-        return std::nullopt;
+        return CommunicationError::READ_ERROR;
     }
 
     if (result == 0)
-        return std::nullopt;
+        return CommunicationError::NO_DATA_AVAILABLE;
 
     assert(header.get_body_size() == result);
 
     // Handle each type differently
     switch (header.get_type()) {
         case DataType::INVALID:
-            break;
+            return CommunicationError::INVALID_DATA;
 
         case DataType::JAVA_SYMBOL_LOOKUP: {
             // Deserialize Java Symbols
             auto data = JavaSymbol::deserialize(buffer_.data(), result);
             if (!data)
-                return std::nullopt;
+                return CommunicationError::INVALID_DATA;
 
             return std::make_tuple(header, *data);
         }
     }
 
-    return std::nullopt;
+    return CommunicationError::UNKNOWN_DATA;
 }
 
 }

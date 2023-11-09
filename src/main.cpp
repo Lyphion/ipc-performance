@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <thread>
+#include <typeinfo>
 
 #include "../include/datagram_socket.hpp"
 #include "../include/fifo.hpp"
@@ -17,51 +18,79 @@ struct overloaded : Ts ... {
 template<class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
+template<typename T>
+std::string build_path(const std::string &name) {
+    if constexpr (std::is_same_v<T, ipc::MessageQueue>) {
+        return "/" + name;
+    } else {
+        return "/tmp/" + name;
+    }
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 3)
         return EXIT_FAILURE;
 
-    std::string path(argv[1]);
+    using Type = ipc::StreamSocket;
+
+    std::string path(build_path<Type>(argv[1]));
     auto readonly = strcmp(argv[2], "reader") == 0;
 
-    ipc::StreamSocket handler(path, readonly);
+    std::cout << "Loading handler... (" << typeid(Type).name() << ')' << std::endl;
+
+    Type handler(path, readonly);
     auto res = handler.open();
     if (!res) {
         std::cout << "Error opening handler" << std::endl;
         return EXIT_FAILURE;
     }
 
-    std::cout << "Handler opened (readonly=" << readonly << ')' << std::endl;
+    std::cout << "Handler opened " << "(readonly=" << readonly << ')' << std::endl;
 
     int i = 1;
+    bool more_data = false;
     while (true) {
         if (readonly) {
-            if (!handler.await_data())
-                continue;
-
-            auto option = handler.read();
-            if (!option) {
-                std::cout << "Error while reading data" << std::endl;
-                continue;
+            if (!more_data) {
+                std::cout << "Await new data..." << std::endl;
+                if (!handler.await_data())
+                    continue;
             }
 
-            auto [header, data] = *option;
+            auto result = handler.read();
+            more_data = !std::holds_alternative<ipc::CommunicationError>(result);
 
-            if (!header.is_valid()) {
-                std::cout << "Invalid data received" << std::endl;
-                continue;
-            }
-
-            std::cout << "Header" << header << " - " << i << std::endl;
             std::visit(overloaded{
-                    [](const ipc::JavaSymbol &symbol) {
-                        std::cout << "JavaSymbol" << symbol << std::endl;
-                    }
-            }, data);
-            i++;
+                    [&handler](const ipc::CommunicationError &error) {
+                        if (error == ipc::CommunicationError::NO_DATA_AVAILABLE)
+                            return;
 
-            if (rand() % 25 == 0)
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                        std::cout << "Error while reading data (Error: "
+                                  << static_cast<int>(error) << ')' << std::endl;
+
+                        if constexpr (std::is_same_v<Type, ipc::StreamSocket>) {
+                            if (error == ipc::CommunicationError::CONNECTION_CLOSED) {
+                                auto s = static_cast<ipc::StreamSocket>(handler);
+                                s.accept();
+                                std::cout << "Client reconnected" << std::endl;
+                            }
+                        }
+                    },
+                    [&i](const auto &success) {
+                        auto [header, data] = success;
+
+                        std::cout << "Header" << header << " - " << i << std::endl;
+                        std::visit(overloaded{
+                                [](const ipc::JavaSymbol &symbol) {
+                                    std::cout << "JavaSymbol" << symbol << std::endl;
+                                }
+                        }, data);
+                        i++;
+
+                        if (i % 25 == 0)
+                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    }
+            }, result);
         } else {
             ipc::JavaSymbol data(
                     static_cast<std::int64_t>(rand()) << 32 | rand(),
@@ -77,7 +106,7 @@ int main(int argc, char *argv[]) {
             std::cout << "JavaSymbol" << data << " - " << i << std::endl;
             i++;
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 20));
         }
     }
 

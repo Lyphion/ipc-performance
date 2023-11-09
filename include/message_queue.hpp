@@ -42,7 +42,7 @@ public:
 
     bool write(const IDataObject &obj) override;
 
-    std::optional<std::tuple<DataHeader, DataObject>> read() override;
+    std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> read() override;
 
     /**
      * Path of the message queue.

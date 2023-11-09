@@ -94,16 +94,8 @@ bool StreamSocket::create_server() {
         return false;
     }
 
-    // Accept new client
-    auto res = ::accept(sfd_, nullptr, nullptr);
-    if (res == -1) {
-        perror("StreamSocket::create_server (accept)");
-        return false;
-    }
-
-    cfd_ = res;
-
-    return true;
+    // Wait for client
+    return accept();
 }
 
 bool StreamSocket::create_client() {
@@ -174,16 +166,18 @@ bool StreamSocket::accept() {
     if (sfd_ == -1)
         return false;
 
-    // Accept new client
-    auto res = ::accept(sfd_, nullptr, nullptr);
-    if (res == -1) {
-        perror("StreamSocket::accept (accept)");
-    } else {
-        if (cfd_ != -1)
-            ::close(cfd_);
-        cfd_ = res;
+    // Close old client socket
+    if (cfd_ != -1) {
+        ::close(cfd_);
+        cfd_ = -1;
     }
 
+    // Accept new client
+    auto res = accept4(sfd_, nullptr, nullptr, SOCK_NONBLOCK);
+    if (res == -1)
+        perror("StreamSocket::accept (accept4)");
+
+    cfd_ = res;
     return res != -1;
 }
 
@@ -241,64 +235,70 @@ bool StreamSocket::write(const IDataObject &obj) {
     // Write data into socket
     auto res = send(sfd_, buffer_.data(), header_size + size, 0);
     if (res == -1)
-        perror("StreamSocket::write (write)");
+        perror("StreamSocket::write (send)");
 
     return res != -1;
 }
 
-std::optional<std::tuple<DataHeader, DataObject>> StreamSocket::read() {
+std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> StreamSocket::read() {
     constexpr auto header_size = sizeof(DataHeader);
 
     // Check if pipe is open
     if (cfd_ == -1)
-        return std::nullopt;
+        return CommunicationError::CONNECTION_CLOSED;
 
     // Read data from pipe
     auto result = recv(cfd_, buffer_.data(), header_size, 0);
     if (result == -1) {
-        perror("StreamSocket::read (read)");
-        return std::nullopt;
+        if (errno == EAGAIN)
+            return CommunicationError::NO_DATA_AVAILABLE;
+
+        perror("StreamSocket::read (recv)");
+        return CommunicationError::READ_ERROR;
     }
 
     if (result == 0)
-        return std::nullopt;
+        return CommunicationError::CONNECTION_CLOSED;
 
     assert(header_size == result);
 
     // Deserialize header
     auto optional = DataHeader::deserialize(buffer_.data(), result);
     if (!optional)
-        return std::nullopt;
+        return CommunicationError::INVALID_HEADER;
 
     auto header = *optional;
 
     result = recv(cfd_, buffer_.data(), header.get_body_size(), 0);
     if (result == -1) {
-        perror("StreamSocket::read (read)");
-        return std::nullopt;
+        if (errno == EAGAIN)
+            return CommunicationError::NO_DATA_AVAILABLE;
+
+        perror("StreamSocket::read (recv)");
+        return CommunicationError::READ_ERROR;
     }
 
     if (result == 0)
-        return std::nullopt;
+        return CommunicationError::CONNECTION_CLOSED;
 
     assert(header.get_body_size() == result);
 
     // Handle each type differently
     switch (header.get_type()) {
         case DataType::INVALID:
-            break;
+            return CommunicationError::INVALID_DATA;
 
         case DataType::JAVA_SYMBOL_LOOKUP: {
             // Deserialize Java Symbols
             auto data = JavaSymbol::deserialize(buffer_.data(), result);
             if (!data)
-                return std::nullopt;
+                return CommunicationError::INVALID_DATA;
 
             return std::make_tuple(header, *data);
         }
     }
 
-    return std::nullopt;
+    return CommunicationError::UNKNOWN_DATA;
 }
 
 bool StreamSocket::build_address() {
@@ -317,12 +317,15 @@ bool StreamSocket::build_address() {
         // Construct internet server socket
         sockaddr_in s_addr{};
         s_addr.sin_family = AF_INET;
+        s_addr.sin_addr.s_addr = INADDR_ANY;
         s_addr.sin_port = htons(port);
 
-        // Convert string address to IPv4 format
-        if (inet_pton(AF_INET, address.c_str(), &s_addr.sin_addr) <= 0) {
-            perror("StreamSocket::build_address (inet_pton)");
-            return false;
+        if (!server_) {
+            // Convert string address to IPv4 format
+            if (inet_pton(AF_INET, address.c_str(), &s_addr.sin_addr) <= 0) {
+                perror("StreamSocket::build_address (inet_pton)");
+                return false;
+            }
         }
 
         address_ = s_addr;

@@ -25,6 +25,10 @@ bool MessageQueue::open() {
     if (mqd_ != -1)
         return true;
 
+    // Clear old messages
+    if (readonly_)
+        mq_unlink(path_.c_str());
+
     // Configure block size
     mq_attr attr{};
     attr.mq_msgsize = BUFFER_SIZE;
@@ -32,7 +36,7 @@ bool MessageQueue::open() {
 
     // Create and open message queue
     auto flag = readonly_ ? (O_RDWR | O_CREAT | O_NONBLOCK) : (O_RDWR | O_CREAT);
-    mqd_ = mq_open(path_.c_str(), flag, 0666, &attr);
+    mqd_ = mq_open(path_.c_str(), flag, 0660, &attr);
     if (mqd_ == -1) {
         mq_unlink(path_.c_str());
         perror("MessageQueue::open (mq_open)");
@@ -114,43 +118,46 @@ bool MessageQueue::write(const IDataObject &obj) {
     return res != -1;
 }
 
-std::optional<std::tuple<DataHeader, DataObject>> MessageQueue::read() {
+std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> MessageQueue::read() {
     constexpr auto header_size = sizeof(DataHeader);
 
     // Check if message queue is open
     if (mqd_ == -1)
-        return std::nullopt;
+        return CommunicationError::CONNECTION_CLOSED;
 
     // Read data from message queue
     auto result = mq_receive(mqd_, reinterpret_cast<char *>(buffer_.data()), BUFFER_SIZE, nullptr);
     if (result == -1) {
+        if (errno == EAGAIN)
+            return CommunicationError::NO_DATA_AVAILABLE;
+
         perror("MessageQueue::read (mq_receive)");
-        return std::nullopt;
+        return CommunicationError::READ_ERROR;
     }
 
     // Deserialize header
     auto optional = DataHeader::deserialize(buffer_.data(), result);
     if (!optional)
-        return std::nullopt;
+        return CommunicationError::INVALID_HEADER;
 
     auto header = *optional;
 
     // Handle each type differently
     switch (header.get_type()) {
         case DataType::INVALID:
-            break;
+            return CommunicationError::INVALID_DATA;
 
         case DataType::JAVA_SYMBOL_LOOKUP: {
             // Deserialize Java Symbols
             auto data = JavaSymbol::deserialize(&buffer_[header_size], result - header_size);
             if (!data)
-                return std::nullopt;
+                return CommunicationError::INVALID_DATA;
 
             return std::make_tuple(header, *data);
         }
     }
 
-    return std::nullopt;
+    return CommunicationError::UNKNOWN_DATA;
 }
 
 }

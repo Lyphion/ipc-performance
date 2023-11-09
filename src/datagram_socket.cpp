@@ -48,7 +48,7 @@ bool DatagramSocket::open() {
 bool DatagramSocket::create_server() {
     // Open socket depending on type
     if (unix_) {
-        sfd_ = socket(AF_UNIX, SOCK_DGRAM, 0);
+        sfd_ = socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK, 0);
         if (sfd_ == -1) {
             perror("DatagramSocket::create_server (socket)");
             return false;
@@ -68,7 +68,7 @@ bool DatagramSocket::create_server() {
             return false;
         }
     } else {
-        sfd_ = socket(AF_INET, SOCK_DGRAM, 0);
+        sfd_ = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
         if (sfd_ == -1) {
             perror("DatagramSocket::create_server (socket)");
             return false;
@@ -213,44 +213,47 @@ bool DatagramSocket::write(const IDataObject &obj) {
     return res != -1;
 }
 
-std::optional<std::tuple<DataHeader, DataObject>> DatagramSocket::read() {
+std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> DatagramSocket::read() {
     constexpr auto header_size = sizeof(DataHeader);
 
     // Check if socket is open
     if (sfd_ == -1)
-        return std::nullopt;
+        return CommunicationError::CONNECTION_CLOSED;
 
     // Read data from socket
     auto result = recvfrom(sfd_, buffer_.data(), BUFFER_SIZE, 0, nullptr, nullptr);
     if (result == -1) {
+        if (errno == EAGAIN)
+            return CommunicationError::NO_DATA_AVAILABLE;
+
         perror("DatagramSocket::read (recvfrom)");
-        return std::nullopt;
+        return CommunicationError::READ_ERROR;
     }
 
     // Deserialize header
     auto optional = DataHeader::deserialize(buffer_.data(), result);
     if (!optional)
-        return std::nullopt;
+        return CommunicationError::INVALID_HEADER;
 
     auto header = *optional;
 
     // Handle each type differently
     switch (header.get_type()) {
         case DataType::INVALID:
-            break;
+            return CommunicationError::INVALID_DATA;
 
         case DataType::JAVA_SYMBOL_LOOKUP: {
             // Deserialize Java Symbols
             auto data = JavaSymbol::deserialize(&buffer_[header_size], result - header_size);
             if (!data)
-                return std::nullopt;
+                return CommunicationError::INVALID_DATA;
 
             return std::make_tuple(header, *data);
         }
     }
 
     // Unknown or invalid type
-    return std::nullopt;
+    return CommunicationError::UNKNOWN_DATA;
 }
 
 bool DatagramSocket::build_address() {
@@ -282,12 +285,15 @@ bool DatagramSocket::build_address() {
         // Construct internet server socket
         sockaddr_in s_addr{};
         s_addr.sin_family = AF_INET;
+        s_addr.sin_addr.s_addr = INADDR_ANY;
         s_addr.sin_port = htons(port);
 
-        // Convert string address to IPv4 format
-        if (inet_pton(AF_INET, address.c_str(), &s_addr.sin_addr) <= 0) {
-            perror("DatagramSocket::build_address (inet_pton)");
-            return false;
+        if (!server_) {
+            // Convert string address to IPv4 format
+            if (inet_pton(AF_INET, address.c_str(), &s_addr.sin_addr) <= 0) {
+                perror("DatagramSocket::build_address (inet_pton)");
+                return false;
+            }
         }
 
         address_ = s_addr;

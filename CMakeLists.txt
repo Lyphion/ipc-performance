@@ -29,4 +29,5 @@ add_executable(IPC src/main.cpp
         src/message_queue.cpp
         include/stream_socket.hpp
         src/stream_socket.cpp
+        include/communication_error.hpp
 )

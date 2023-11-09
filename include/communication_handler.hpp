@@ -1,10 +1,10 @@
 #pragma once
 
 #include <memory>
-#include <optional>
 #include <tuple>
 #include <variant>
 
+#include "communication_error.hpp"
 #include "data_object.hpp"
 #include "data_header.hpp"
 #include "java_symbol.hpp"
@@ -44,9 +44,9 @@ public:
     /**
      * Read a data objects from the inter-process communication handler.
      *
-     * @return Objects received from the handler.
+     * @return Objects received from the handler or an error.
      */
-    virtual std::optional<std::tuple<DataHeader, DataObject>> read() = 0;
+    virtual std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> read() = 0;
 };
 
 }
