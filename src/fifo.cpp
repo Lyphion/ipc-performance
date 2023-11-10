@@ -4,7 +4,6 @@
 
 extern "C" {
 #include <fcntl.h>
-#include <sys/poll.h>
 #include <sys/stat.h>
 #include <unistd.h>
 }
@@ -69,16 +68,12 @@ bool Fifo::await_data() const {
     if (fd_ == -1)
         return false;
 
-    pollfd pfd{};
-    pfd.fd = fd_;
-    pfd.events = POLLIN;
-
     // Poll events and block until one is available
-    auto res = poll(&pfd, 1, -1);
+    auto res = ::poll(fd_, -1);
     if (res == -1)
         perror("Fifo::await_data (poll)");
 
-    return res != -1;
+    return res > 0;
 }
 
 bool Fifo::has_data() const {
@@ -86,12 +81,8 @@ bool Fifo::has_data() const {
     if (fd_ == -1)
         return false;
 
-    pollfd pfd{};
-    pfd.fd = fd_;
-    pfd.events = POLLIN;
-
     // Poll events and block for 1ms
-    auto res = poll(&pfd, 1, 1);
+    auto res = ::poll(fd_, 1);
     if (res == -1)
         perror("Fifo::has_data (poll)");
 

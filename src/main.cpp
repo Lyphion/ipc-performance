@@ -2,7 +2,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <thread>
-#include <typeinfo>
 
 #include "../include/datagram_socket.hpp"
 #include "../include/fifo.hpp"
@@ -70,7 +69,7 @@ int main(int argc, char *argv[]) {
 
                         if constexpr (std::is_same_v<Type, ipc::StreamSocket>) {
                             if (error == ipc::CommunicationError::CONNECTION_CLOSED) {
-                                auto s = static_cast<ipc::StreamSocket>(handler);
+                                auto& s = static_cast<ipc::StreamSocket&>(handler);
                                 s.accept();
                                 std::cout << "Client reconnected" << std::endl;
                             }

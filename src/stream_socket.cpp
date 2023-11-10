@@ -4,7 +4,6 @@
 
 extern "C" {
 #include <arpa/inet.h>
-#include <sys/poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 }
@@ -186,16 +185,12 @@ bool StreamSocket::await_data() const {
     if (cfd_ == -1)
         return false;
 
-    pollfd pfd{};
-    pfd.fd = cfd_;
-    pfd.events = POLLIN;
-
     // Poll events and block until one is available
-    auto res = ::poll(&pfd, 1, -1);
+    auto res = ::poll(cfd_, -1);
     if (res == -1)
         perror("StreamSocket::await_data (poll)");
 
-    return res != -1;
+    return res > 0;
 }
 
 bool StreamSocket::has_data() const {
@@ -203,12 +198,8 @@ bool StreamSocket::has_data() const {
     if (cfd_ == -1)
         return false;
 
-    pollfd pfd{};
-    pfd.fd = cfd_;
-    pfd.events = POLLIN;
-
     // Poll events and block for 1ms
-    auto res = ::poll(&pfd, 1, 1);
+    auto res = ::poll(cfd_, 1);
     if (res == -1)
         perror("StreamSocket::has_data (poll)");
 

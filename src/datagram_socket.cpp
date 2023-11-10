@@ -2,7 +2,6 @@
 
 extern "C" {
 #include <arpa/inet.h>
-#include <sys/poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 }
@@ -101,18 +100,6 @@ bool DatagramSocket::create_client() {
         // Build addresses for communication
         if (!build_address())
             return false;
-
-        /*
-        // Remove old socket files
-        remove_file();
-
-        // Bind socket for listing
-        auto c_addr = *client_address_;
-        if (bind(sfd_, reinterpret_cast<sockaddr *>(&c_addr), sizeof(sockaddr_un)) == -1) {
-            perror("DatagramSocket::create_client (bind)");
-            return false;
-        }
-        */
     } else {
         sfd_ = socket(AF_INET, SOCK_DGRAM, 0);
         if (sfd_ == -1) {
@@ -151,16 +138,12 @@ bool DatagramSocket::await_data() const {
     if (sfd_ == -1)
         return false;
 
-    pollfd pfd{};
-    pfd.fd = sfd_;
-    pfd.events = POLLIN;
-
     // Poll events and block until one is available
-    auto res = ::poll(&pfd, 1, -1);
+    auto res = ::poll(sfd_, -1);
     if (res == -1)
         perror("DatagramSocket::await_data (poll)");
 
-    return res != -1;
+    return res > 0;
 }
 
 bool DatagramSocket::has_data() const {
@@ -168,12 +151,8 @@ bool DatagramSocket::has_data() const {
     if (sfd_ == -1)
         return false;
 
-    pollfd pfd{};
-    pfd.fd = sfd_;
-    pfd.events = POLLIN;
-
     // Poll events and block for 1ms
-    auto res = ::poll(&pfd, 1, 1);
+    auto res = ::poll(sfd_, 1);
     if (res == -1)
         perror("DatagramSocket::has_data (poll)");
 
@@ -265,19 +244,6 @@ bool DatagramSocket::build_address() {
         s_addr.sun_family = AF_UNIX;
         strncpy(s_addr.sun_path, path.c_str(), sizeof(s_addr.sun_path) - 1);
         address_ = s_addr;
-
-        /*
-        std::string client_path(path);
-        client_path += '_';
-        client_path += std::to_string(getpid());
-
-        // Construct unix client socket
-        sockaddr_un c_addr{};
-        c_addr.sun_family = AF_UNIX;
-        strncpy(c_addr.sun_path, client_path.c_str(), sizeof(c_addr.sun_path) - 1);
-
-        client_address_ = c_addr;
-         */
     } else {
         auto address = std::get<0>(parameters_);
         auto port = *std::get<1>(parameters_);
@@ -305,8 +271,6 @@ bool DatagramSocket::build_address() {
 void DatagramSocket::remove_file() {
     if (server_) {
         remove(std::get<0>(address_).sun_path);
-    } else {
-        // remove(client_address_->sun_path);
     }
 }
 

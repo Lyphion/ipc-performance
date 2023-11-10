@@ -3,7 +3,6 @@
 extern "C" {
 #include <fcntl.h>
 #include <mqueue.h>
-#include <sys/poll.h>
 #include <sys/stat.h>
 }
 
@@ -60,33 +59,25 @@ bool MessageQueue::close() {
 }
 
 bool MessageQueue::await_data() const {
-    // Check if pipe is open
+    // Check if message queue is open
     if (mqd_ == -1)
         return false;
 
-    pollfd pfd{};
-    pfd.fd = mqd_;
-    pfd.events = POLLIN;
-
     // Poll events and block until one is available
-    auto res = poll(&pfd, 1, -1);
+    auto res = ::poll(mqd_, -1);
     if (res == -1)
         perror("MessageQueue::await_data (poll)");
 
-    return res != -1;
+    return res > 0;
 }
 
 bool MessageQueue::has_data() const {
-    // Check if pipe is open
+    // Check if message queue is open
     if (mqd_ == -1)
         return false;
-
-    pollfd pfd{};
-    pfd.fd = mqd_;
-    pfd.events = POLLIN;
-
+    
     // Poll events and block for 1ms
-    auto res = poll(&pfd, 1, 1);
+    auto res = ::poll(mqd_, 1);
     if (res == -1)
         perror("MessageQueue::has_data (poll)");
 

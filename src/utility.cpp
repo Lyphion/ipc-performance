@@ -4,6 +4,10 @@
 #include <iostream>
 #include <iomanip>
 
+extern "C" {
+#include <sys/poll.h>
+}
+
 void print_array(const std::byte *data, unsigned int size) {
     std::ios_base::fmtflags f(std::cout.flags());
 
@@ -20,4 +24,13 @@ std::int64_t get_timestamp() {
     const auto time = std::chrono::high_resolution_clock::now();
     return std::chrono::time_point_cast<std::chrono::nanoseconds>(time)
             .time_since_epoch().count();
+}
+
+int poll(int fd, int timeout) {
+    pollfd pfd{};
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+
+    // Poll events and block for 1ms
+    return ::poll(&pfd, 1, timeout);
 }
