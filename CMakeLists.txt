@@ -11,23 +11,13 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(IPC src/main.cpp
-        include/data_type.hpp
-        include/data_object.hpp
-        include/data_header.hpp
-        src/data_header.cpp
-        include/java_symbol.hpp
-        src/java_symbol.cpp
-        include/communication_handler.hpp
-        include/fifo.hpp
-        src/fifo.cpp
-        include/utility.hpp
-        src/utility.cpp
-        include/datagram_socket.hpp
-        src/datagram_socket.cpp
-        include/message_queue.hpp
-        src/message_queue.cpp
-        include/stream_socket.hpp
-        src/stream_socket.cpp
-        include/communication_error.hpp
-)
+# DBus header files
+include_directories("/usr/include/dbus-1.0")
+include_directories("/usr/lib/x86_64-linux-gnu/dbus-1.0/include")
+link_libraries("dbus-1")
+
+# Project files .hpp + .cpp
+include_directories(include)
+file(GLOB SOURCES "src/*.cpp")
+
+add_executable(IPC ${SOURCES})

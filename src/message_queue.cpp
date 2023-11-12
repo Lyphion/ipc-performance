@@ -75,7 +75,7 @@ bool MessageQueue::has_data() const {
     // Check if message queue is open
     if (mqd_ == -1)
         return false;
-    
+
     // Poll events and block for 1ms
     auto res = ::poll(mqd_, 1);
     if (res == -1)
@@ -92,7 +92,9 @@ bool MessageQueue::write(const IDataObject &obj) {
         return false;
 
     // Serialize body
-    std::uint32_t size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
+    auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
+    if (size == -1)
+        return false;
 
     last_id_++;
     auto timestamp = get_timestamp();

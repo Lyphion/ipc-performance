@@ -92,7 +92,6 @@ private:
 private:
     const std::tuple<std::string, std::optional<std::uint16_t>> parameters_;
     std::variant<sockaddr_un, sockaddr_in> address_;
-    // std::optional<sockaddr_un> client_address_;
     const bool server_;
     const bool unix_;
     int sfd_ = -1;

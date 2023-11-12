@@ -97,7 +97,9 @@ bool Fifo::write(const IDataObject &obj) {
         return false;
 
     // Serialize body
-    std::uint32_t size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
+    auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
+    if (size == -1)
+        return false;
 
     last_id_++;
     auto timestamp = get_timestamp();

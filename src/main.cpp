@@ -7,6 +7,7 @@
 #include "../include/fifo.hpp"
 #include "../include/message_queue.hpp"
 #include "../include/stream_socket.hpp"
+#include "../include/dbus.hpp"
 
 // helper type for the visitor
 template<class... Ts>
@@ -19,7 +20,9 @@ overloaded(Ts...) -> overloaded<Ts...>;
 
 template<typename T>
 std::string build_path(const std::string &name) {
-    if constexpr (std::is_same_v<T, ipc::MessageQueue>) {
+    if constexpr (std::is_same_v<T, ipc::DBus>) {
+        return "ipc." + name + ".server";
+    } else if constexpr (std::is_same_v<T, ipc::MessageQueue>) {
         return "/" + name;
     } else {
         return "/tmp/" + name;
@@ -27,10 +30,12 @@ std::string build_path(const std::string &name) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 3)
+    if (argc < 3) {
+        std::cout << "Missing arguments" << std::endl;
         return EXIT_FAILURE;
+    }
 
-    using Type = ipc::StreamSocket;
+    using Type = ipc::DBus;
 
     std::string path(build_path<Type>(argv[1]));
     auto readonly = strcmp(argv[2], "reader") == 0;
@@ -67,6 +72,7 @@ int main(int argc, char *argv[]) {
                         std::cout << "Error while reading data (Error: "
                                   << static_cast<int>(error) << ')' << std::endl;
 
+                        /*
                         if constexpr (std::is_same_v<Type, ipc::StreamSocket>) {
                             if (error == ipc::CommunicationError::CONNECTION_CLOSED) {
                                 auto& s = static_cast<ipc::StreamSocket&>(handler);
@@ -74,6 +80,7 @@ int main(int argc, char *argv[]) {
                                 std::cout << "Client reconnected" << std::endl;
                             }
                         }
+                        */
                     },
                     [&i](const auto &success) {
                         auto [header, data] = success;
@@ -105,7 +112,7 @@ int main(int argc, char *argv[]) {
             std::cout << "JavaSymbol" << data << " - " << i << std::endl;
             i++;
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 20));
+            std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 2));
         }
     }
 
