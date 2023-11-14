@@ -9,7 +9,7 @@ DBus::DBus(std::string name, bool server)
 
 DBus::~DBus() {
     if (con_ != nullptr) {
-        close();
+        DBus::close();
     }
 }
 

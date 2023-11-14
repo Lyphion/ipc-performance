@@ -38,21 +38,11 @@ public:
     /**
      * Destructor for this object to cleanup data and close dbus.
      */
-    ~DBus();
+    ~DBus() override;
 
-    /**
-     * Create a new dbus.
-     *
-     * @return True, if dbus was successfully opened.
-     */
-    bool open();
+    bool open() override;
 
-    /**
-     * Close the current dbus.
-     *
-     * @return True, if dbus was successfully closed.
-     */
-    bool close();
+    bool close() override;
 
     bool await_data() const override;
 

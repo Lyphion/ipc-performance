@@ -15,7 +15,7 @@ MessageQueue::MessageQueue(std::string path, bool readonly)
 
 MessageQueue::~MessageQueue() {
     if (mqd_ != -1) {
-        close();
+        MessageQueue::close();
     }
 }
 
@@ -37,8 +37,10 @@ bool MessageQueue::open() {
     auto flag = readonly_ ? (O_RDWR | O_CREAT | O_NONBLOCK) : (O_RDWR | O_CREAT);
     mqd_ = mq_open(path_.c_str(), flag, 0660, &attr);
     if (mqd_ == -1) {
-        mq_unlink(path_.c_str());
         perror("MessageQueue::open (mq_open)");
+
+        if (readonly_)
+            mq_unlink(path_.c_str());
         return false;
     }
 
@@ -52,7 +54,8 @@ bool MessageQueue::close() {
 
     // Close and unlink message queue
     mq_close(mqd_);
-    mq_unlink(path_.c_str());
+    if (readonly_)
+        mq_unlink(path_.c_str());
     mqd_ = -1;
 
     return true;

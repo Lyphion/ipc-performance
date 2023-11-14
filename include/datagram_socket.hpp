@@ -38,21 +38,11 @@ public:
     /**
      * Destructor for this object to cleanup data and close socket.
      */
-    ~DatagramSocket();
+    ~DatagramSocket() override;
 
-    /**
-     * Create a new socket.
-     *
-     * @return True, if socket was successfully opened.
-     */
-    bool open();
+    bool open() override;
 
-    /**
-     * Close the current socket.
-     *
-     * @return True, if socket was successfully closed.
-     */
-    bool close();
+    bool close() override;
 
     bool await_data() const override;
 
@@ -83,11 +73,6 @@ private:
      * @return True, if socket client was created successfully.
      */
     bool create_client();
-
-    /**
-     * Remove temporary socket files.
-     */
-    void remove_file();
 
 private:
     const std::tuple<std::string, std::optional<std::uint16_t>> parameters_;

@@ -18,7 +18,7 @@ Fifo::Fifo(std::string path, bool readonly)
 Fifo::~Fifo() {
     // Close pipe if open
     if (fd_ != -1) {
-        close();
+        Fifo::close();
     }
 }
 
@@ -43,7 +43,9 @@ bool Fifo::open() {
     fd_ = ::open(path_.c_str(), flag);
     if (fd_ == -1) {
         perror("Fifo::open (open)");
-        unlink(path_.c_str());
+
+        if (readonly_)
+            unlink(path_.c_str());
         return false;
     }
 
@@ -57,7 +59,9 @@ bool Fifo::close() {
 
     // Close and unlink pipe
     ::close(fd_);
-    unlink(path_.c_str());
+
+    if (readonly_)
+        unlink(path_.c_str());
     fd_ = -1;
 
     return true;

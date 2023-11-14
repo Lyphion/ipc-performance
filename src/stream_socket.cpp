@@ -23,7 +23,7 @@ StreamSocket::StreamSocket(std::string address, std::uint16_t port, bool server)
 StreamSocket::~StreamSocket() {
     // Close socket if open
     if (sfd_ != -1) {
-        close();
+        StreamSocket::close();
     }
 }
 
@@ -60,7 +60,7 @@ bool StreamSocket::create_server() {
             return false;
 
         // Remove old socket files
-        remove_file();
+        remove(std::get<0>(address_).sun_path);
 
         // Bind socket for listing
         auto address = std::get<0>(address_);
@@ -150,8 +150,8 @@ bool StreamSocket::close() {
         ::close(cfd_);
 
     // Remove file only for unix
-    if (unix_) {
-        remove_file();
+    if (unix_ && server_) {
+        remove(std::get<0>(address_).sun_path);
     }
 
     sfd_ = -1;
@@ -325,12 +325,6 @@ bool StreamSocket::build_address() {
     }
 
     return true;
-}
-
-void StreamSocket::remove_file() {
-    if (server_) {
-        remove(std::get<0>(address_).sun_path);
-    }
 }
 
 }

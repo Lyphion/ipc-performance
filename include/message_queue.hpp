@@ -20,21 +20,11 @@ public:
     /**
      * Destructor for this object to cleanup data and close message queue.
      */
-    ~MessageQueue();
+    ~MessageQueue() override;
 
-    /**
-     * Open a new message queue.
-     *
-     * @return True, if message queue was successfully opened.
-     */
-    bool open();
+    bool open() override;
 
-    /**
-     * Close the current message queue.
-     *
-     * @return True, if message queue was successfully closed.
-     */
-    bool close();
+    bool close() override;
 
     bool await_data() const override;
 

@@ -24,21 +24,11 @@ public:
     /**
      * Destructor for this object to cleanup data and close pipe.
      */
-    ~Fifo();
+    ~Fifo() override;
 
-    /**
-     * Open a new pipe.
-     *
-     * @return True, if pipe was successfully opened.
-     */
-    bool open();
+    bool open() override;
 
-    /**
-     * Close the current pipe.
-     *
-     * @return True, if pipe was successfully closed.
-     */
-    bool close();
+    bool close() override;
 
     bool await_data() const override;
 

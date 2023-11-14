@@ -19,6 +19,22 @@ using DataObject = std::variant<JavaSymbol>;
  */
 class ICommunicationHandler {
 public:
+    virtual ~ICommunicationHandler() = default;
+
+    /**
+     * Open handler.
+     *
+     * @return True, if handler was successfully opened.
+     */
+    virtual bool open() = 0;
+
+    /**
+     * Close the handler.
+     *
+     * @return True, if handler was successfully closed.
+     */
+    virtual bool close() = 0;
+
     /**
      * Poll new data from the handler.
      *

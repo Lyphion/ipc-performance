@@ -21,7 +21,7 @@ DatagramSocket::DatagramSocket(std::string address, std::uint16_t port, bool ser
 DatagramSocket::~DatagramSocket() {
     // Close socket if open
     if (sfd_ != -1) {
-        close();
+        DatagramSocket::close();
     }
 }
 
@@ -58,7 +58,7 @@ bool DatagramSocket::create_server() {
             return false;
 
         // Remove old socket files
-        remove_file();
+        remove(std::get<0>(address_).sun_path);
 
         // Bind socket for listing
         auto address = std::get<0>(address_);
@@ -124,8 +124,8 @@ bool DatagramSocket::close() {
     ::close(sfd_);
 
     // Remove file only for unix
-    if (unix_) {
-        remove_file();
+    if (unix_ && server_) {
+        remove(std::get<0>(address_).sun_path);
     }
 
     sfd_ = -1;
@@ -268,12 +268,6 @@ bool DatagramSocket::build_address() {
     }
 
     return true;
-}
-
-void DatagramSocket::remove_file() {
-    if (server_) {
-        remove(std::get<0>(address_).sun_path);
-    }
 }
 
 }
