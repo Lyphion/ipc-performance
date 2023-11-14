@@ -41,25 +41,6 @@ bool SharedMemory::open() {
             perror("SharedMemory::open (open)");
             return false;
         }
-
-        if (server_) {
-            // Resize memory
-            if (ftruncate(fd_, TOTAL_SIZE) == -1) {
-                perror("SharedMemory::open (ftruncate)");
-                close();
-                return false;
-            }
-        }
-
-        // Allocate memory
-        auto addr = mmap(nullptr, TOTAL_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
-        if (addr == MAP_FAILED) {
-            perror("SharedMemory::open (mmap)");
-            close();
-            return false;
-        }
-
-        address_ = static_cast<std::byte *>(addr);
     } else {
         if (server_) {
             // Create memory
@@ -74,26 +55,26 @@ bool SharedMemory::open() {
             perror("SharedMemory::open (shm_open)");
             return false;
         }
+    }
 
-        if (server_) {
-            // Resize memory
-            if (ftruncate(fd_, TOTAL_SIZE) == -1) {
-                perror("SharedMemory::open (ftruncate)");
-                close();
-                return false;
-            }
-        }
-
-        // Allocate memory
-        auto addr = mmap(nullptr, TOTAL_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
-        if (addr == MAP_FAILED) {
-            perror("SharedMemory::open (mmap)");
+    if (server_) {
+        // Resize memory
+        if (ftruncate(fd_, TOTAL_SIZE) == -1) {
+            perror("SharedMemory::open (ftruncate)");
             close();
             return false;
         }
-
-        address_ = static_cast<std::byte *>(addr);
     }
+
+    // Allocate memory
+    auto addr = mmap(nullptr, TOTAL_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
+    if (addr == MAP_FAILED) {
+        perror("SharedMemory::open (mmap)");
+        close();
+        return false;
+    }
+
+    address_ = static_cast<std::byte *>(addr);
 
     std::string prefix(name_.substr(name_.rfind('/') + 1) + "_sem");
 
@@ -187,6 +168,7 @@ bool SharedMemory::write(const IDataObject &obj) {
     if (fd_ == -1)
         return false;
 
+    // Wait until memory is available
     auto res = sem_wait(writer_);
     if (res == -1) {
         perror("SharedMemory::write (sem_wait)");
@@ -207,6 +189,7 @@ bool SharedMemory::write(const IDataObject &obj) {
     // Serialize header
     header.serialize(buffer_.data(), header_size);
 
+    // Copy data to memory
     std::memcpy(&address_[offset_ * BUFFER_SIZE], buffer_.data(), BUFFER_SIZE);
     offset_ = (offset_ + 1) % TOTAL_AMOUNT;
 
@@ -221,10 +204,10 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedMemor
     if (fd_ == -1)
         return CommunicationError::CONNECTION_CLOSED;
 
-    timespec wait_time{
-            .tv_sec = 0,
-            .tv_nsec = 100
-    };
+    // Wait and check if data is still available
+    timespec wait_time{};
+    wait_time.tv_nsec = 100;
+
     auto res = sem_timedwait(reader_, &wait_time);
     if (res == -1) {
         if (errno == ETIMEDOUT) {
@@ -235,6 +218,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedMemor
         return CommunicationError::READ_ERROR;
     }
 
+    // Copy data from memory
     std::memcpy(buffer_.data(), &address_[offset_ * BUFFER_SIZE], BUFFER_SIZE);
     offset_ = (offset_ + 1) % TOTAL_AMOUNT;
 
