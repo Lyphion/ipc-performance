@@ -1,6 +1,7 @@
 #include "shared_memory.hpp"
 
 #include <cstring>
+#include <cassert>
 
 extern "C" {
 #include <fcntl.h>
@@ -190,7 +191,7 @@ bool SharedMemory::write(const IDataObject &obj) {
     header.serialize(buffer_.data(), header_size);
 
     // Copy data to memory
-    std::memcpy(&address_[offset_ * BUFFER_SIZE], buffer_.data(), BUFFER_SIZE);
+    std::memcpy(&address_[offset_ * BUFFER_SIZE], buffer_.data(), header_size + size);
     offset_ = (offset_ + 1) % TOTAL_AMOUNT;
 
     sem_post(reader_);
@@ -230,29 +231,17 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedMemor
     }
 
     auto header = *optional;
+    assert(header.get_body_size() <= BUFFER_SIZE - header_size);
 
-    // Handle each type differently
-    switch (header.get_type()) {
-        case DataType::INVALID: {
-            sem_post(writer_);
-            return CommunicationError::INVALID_DATA;
-        }
-
-        case DataType::JAVA_SYMBOL_LOOKUP: {
-            // Deserialize Java Symbols
-            auto data = JavaSymbol::deserialize(&buffer_[header_size], BUFFER_SIZE - header_size);
-            sem_post(writer_);
-
-            if (!data)
-                return CommunicationError::INVALID_DATA;
-
-            return std::make_tuple(header, *data);
-        }
-    }
-
-    // Unknown or invalid type
+    auto body = deserialize_data_object(header.get_type(), &buffer_[header_size], header.get_body_size());
     sem_post(writer_);
-    return CommunicationError::UNKNOWN_DATA;
+
+    if (std::holds_alternative<DataObject>(body)) {
+        auto obj = std::get<DataObject>(body);
+        return std::make_tuple(header, obj);
+    } else {
+        return std::get<CommunicationError>(body);
+    }
 }
 
 

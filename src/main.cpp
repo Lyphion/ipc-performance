@@ -8,7 +8,7 @@
 #include "../include/message_queue.hpp"
 #include "../include/stream_socket.hpp"
 #include "../include/dbus.hpp"
-#include "shared_memory.hpp"
+#include "../include/shared_memory.hpp"
 
 // helper type for the visitor
 template<class... Ts>
@@ -22,7 +22,7 @@ overloaded(Ts...) -> overloaded<Ts...>;
 template<typename T>
 std::string build_path(const std::string &name) {
     if constexpr (std::is_same_v<T, ipc::SharedMemory>) {
-        return "/tmp/" + name;
+        return name;
     } else if constexpr (std::is_same_v<T, ipc::DBus>) {
         return "ipc." + name + ".server";
     } else if constexpr (std::is_same_v<T, ipc::MessageQueue>) {
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Loading handler... (" << typeid(Type).name() << ')' << std::endl;
 
-    Type handler(path, readonly, true);
+    Type handler(path, readonly);
     auto res = handler.open();
     if (!res) {
         std::cout << "Error opening handler" << std::endl;

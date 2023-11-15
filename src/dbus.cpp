@@ -262,30 +262,16 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> DBus::read(
     dbus_message_iter_recurse(&args, &arr);
     dbus_message_iter_get_fixed_array(&arr, &ptr, &size);
 
-    auto header = DataHeader(id, type, size, timestamp);
-
-    // Handle each type differently
-    switch (header.get_type()) {
-        case DataType::INVALID: {
-            dbus_message_unref(msg);
-            return CommunicationError::INVALID_DATA;
-        }
-
-        case DataType::JAVA_SYMBOL_LOOKUP: {
-            // Deserialize Java Symbols
-            auto data = JavaSymbol::deserialize(ptr, size);
-            dbus_message_unref(msg);
-
-            if (!data)
-                return CommunicationError::INVALID_DATA;
-
-            return std::make_tuple(header, *data);
-        }
-    }
-
-    // Unknown or invalid type
+    auto body = deserialize_data_object(type, ptr, size);
     dbus_message_unref(msg);
-    return CommunicationError::UNKNOWN_DATA;
+
+    if (std::holds_alternative<DataObject>(body)) {
+        auto header = DataHeader(id, type, size, timestamp);
+        auto obj = std::get<DataObject>(body);
+        return std::make_tuple(header, obj);
+    } else {
+        return std::get<CommunicationError>(body);
+    }
 }
 
 }

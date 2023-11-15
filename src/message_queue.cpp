@@ -1,5 +1,7 @@
 #include "../include/message_queue.hpp"
 
+#include <cassert>
+
 extern "C" {
 #include <fcntl.h>
 #include <mqueue.h>
@@ -67,7 +69,7 @@ bool MessageQueue::await_data() const {
         return false;
 
     // Poll events and block until one is available
-    auto res = ::poll(mqd_, -1);
+    auto res = poll(mqd_, -1);
     if (res == -1)
         perror("MessageQueue::await_data (poll)");
 
@@ -80,7 +82,7 @@ bool MessageQueue::has_data() const {
         return false;
 
     // Poll events and block for 1ms
-    auto res = ::poll(mqd_, 1);
+    auto res = poll(mqd_, 1);
     if (res == -1)
         perror("MessageQueue::has_data (poll)");
 
@@ -137,23 +139,16 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> MessageQueu
         return CommunicationError::INVALID_HEADER;
 
     auto header = *optional;
+    assert(header.get_body_size() == result - header_size);
 
-    // Handle each type differently
-    switch (header.get_type()) {
-        case DataType::INVALID:
-            return CommunicationError::INVALID_DATA;
+    auto body = deserialize_data_object(header.get_type(), &buffer_[header_size], header.get_body_size());
 
-        case DataType::JAVA_SYMBOL_LOOKUP: {
-            // Deserialize Java Symbols
-            auto data = JavaSymbol::deserialize(&buffer_[header_size], result - header_size);
-            if (!data)
-                return CommunicationError::INVALID_DATA;
-
-            return std::make_tuple(header, *data);
-        }
+    if (std::holds_alternative<DataObject>(body)) {
+        auto obj = std::get<DataObject>(body);
+        return std::make_tuple(header, obj);
+    } else {
+        return std::get<CommunicationError>(body);
     }
-
-    return CommunicationError::UNKNOWN_DATA;
 }
 
 }

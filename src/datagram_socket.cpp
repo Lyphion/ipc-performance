@@ -1,5 +1,7 @@
 #include "../include/datagram_socket.hpp"
 
+#include <cassert>
+
 extern "C" {
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -139,7 +141,7 @@ bool DatagramSocket::await_data() const {
         return false;
 
     // Poll events and block until one is available
-    auto res = ::poll(sfd_, -1);
+    auto res = poll(sfd_, -1);
     if (res == -1)
         perror("DatagramSocket::await_data (poll)");
 
@@ -152,7 +154,7 @@ bool DatagramSocket::has_data() const {
         return false;
 
     // Poll events and block for 1ms
-    auto res = ::poll(sfd_, 1);
+    auto res = poll(sfd_, 1);
     if (res == -1)
         perror("DatagramSocket::has_data (poll)");
 
@@ -217,24 +219,17 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> DatagramSoc
         return CommunicationError::INVALID_HEADER;
 
     auto header = *optional;
+    assert(header.get_body_size() == result - header_size);
 
-    // Handle each type differently
-    switch (header.get_type()) {
-        case DataType::INVALID:
-            return CommunicationError::INVALID_DATA;
+    auto body = deserialize_data_object(
+            header.get_type(), &buffer_[header_size], header.get_body_size());
 
-        case DataType::JAVA_SYMBOL_LOOKUP: {
-            // Deserialize Java Symbols
-            auto data = JavaSymbol::deserialize(&buffer_[header_size], result - header_size);
-            if (!data)
-                return CommunicationError::INVALID_DATA;
-
-            return std::make_tuple(header, *data);
-        }
+    if (std::holds_alternative<DataObject>(body)) {
+        auto obj = std::get<DataObject>(body);
+        return std::make_tuple(header, obj);
+    } else {
+        return std::get<CommunicationError>(body);
     }
-
-    // Unknown or invalid type
-    return CommunicationError::UNKNOWN_DATA;
 }
 
 bool DatagramSocket::build_address() {

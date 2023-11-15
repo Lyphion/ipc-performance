@@ -186,7 +186,7 @@ bool StreamSocket::await_data() const {
         return false;
 
     // Poll events and block until one is available
-    auto res = ::poll(cfd_, -1);
+    auto res = poll(cfd_, -1);
     if (res == -1)
         perror("StreamSocket::await_data (poll)");
 
@@ -199,7 +199,7 @@ bool StreamSocket::has_data() const {
         return false;
 
     // Poll events and block for 1ms
-    auto res = ::poll(cfd_, 1);
+    auto res = poll(cfd_, 1);
     if (res == -1)
         perror("StreamSocket::has_data (poll)");
 
@@ -276,22 +276,14 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> StreamSocke
 
     assert(header.get_body_size() == result);
 
-    // Handle each type differently
-    switch (header.get_type()) {
-        case DataType::INVALID:
-            return CommunicationError::INVALID_DATA;
+    auto body = deserialize_data_object(header.get_type(), buffer_.data(), header.get_body_size());
 
-        case DataType::JAVA_SYMBOL_LOOKUP: {
-            // Deserialize Java Symbols
-            auto data = JavaSymbol::deserialize(buffer_.data(), result);
-            if (!data)
-                return CommunicationError::INVALID_DATA;
-
-            return std::make_tuple(header, *data);
-        }
+    if (std::holds_alternative<DataObject>(body)) {
+        auto obj = std::get<DataObject>(body);
+        return std::make_tuple(header, obj);
+    } else {
+        return std::get<CommunicationError>(body);
     }
-
-    return CommunicationError::UNKNOWN_DATA;
 }
 
 bool StreamSocket::build_address() {
