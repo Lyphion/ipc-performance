@@ -73,7 +73,7 @@ bool Fifo::await_data() const {
         return false;
 
     // Poll events and block until one is available
-    auto res = poll(fd_, -1);
+    auto res = poll(fd_, WAIT_TIME);
     if (res == -1)
         perror("Fifo::await_data (poll)");
 

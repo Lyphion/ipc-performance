@@ -186,7 +186,7 @@ bool StreamSocket::await_data() const {
         return false;
 
     // Poll events and block until one is available
-    auto res = poll(cfd_, -1);
+    auto res = poll(cfd_, WAIT_TIME);
     if (res == -1)
         perror("StreamSocket::await_data (poll)");
 

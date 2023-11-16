@@ -33,7 +33,7 @@ int poll(int fd, int timeout) {
     pfd.fd = fd;
     pfd.events = POLLIN;
 
-    // Poll events and block for 1ms
+    // Poll events and block for 'timeout'
     return ::poll(&pfd, 1, timeout);
 }
 

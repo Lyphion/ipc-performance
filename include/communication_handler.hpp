@@ -19,6 +19,9 @@ using DataObject = std::variant<JavaSymbol>;
  */
 class ICommunicationHandler {
 public:
+    /// Time to wait for each poll in milliseconds.
+    static constexpr short WAIT_TIME = 5000;
+
     virtual ~ICommunicationHandler() = default;
 
     /**

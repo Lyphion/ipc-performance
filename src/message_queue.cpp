@@ -69,7 +69,7 @@ bool MessageQueue::await_data() const {
         return false;
 
     // Poll events and block until one is available
-    auto res = poll(mqd_, -1);
+    auto res = poll(mqd_, WAIT_TIME);
     if (res == -1)
         perror("MessageQueue::await_data (poll)");
 

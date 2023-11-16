@@ -141,7 +141,7 @@ bool DatagramSocket::await_data() const {
         return false;
 
     // Poll events and block until one is available
-    auto res = poll(sfd_, -1);
+    auto res = poll(sfd_, WAIT_TIME);
     if (res == -1)
         perror("DatagramSocket::await_data (poll)");
 

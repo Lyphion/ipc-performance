@@ -101,7 +101,7 @@ bool DBus::await_data() const {
         return false;
 
     // Poll events and block until one is available
-    auto res = dbus_connection_read_write(con_, -1);
+    auto res = dbus_connection_read_write(con_, WAIT_TIME);
     return res != 0;
 }
 

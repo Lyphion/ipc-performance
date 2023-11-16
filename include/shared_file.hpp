@@ -1,5 +1,7 @@
 #pragma once
 
+#include <fstream>
+
 extern "C" {
 #include <semaphore.h>
 }
@@ -8,7 +10,7 @@ extern "C" {
 
 namespace ipc {
 
-class SharedMemory : public ICommunicationHandler {
+class SharedFile : public ICommunicationHandler {
 public:
     /// Size of the buffer and limit of header and body combined.
     static constexpr short BUFFER_SIZE = 512;
@@ -20,18 +22,17 @@ public:
     static constexpr int TOTAL_SIZE = BUFFER_SIZE * TOTAL_AMOUNT * sizeof(std::byte);
 
     /**
-     * Create a new shared memory handler.
+     * Create a new shared file handler.
      *
-     * @param name   Name area or file.
-     * @param server Whether is object manages the memory.
-     * @param file   Whether the name is a path.
+     * @param path   Path for the file.
+     * @param server Whether is object manages the file.
      */
-    SharedMemory(std::string name, bool server, bool file = false);
+    SharedFile(std::string path, bool server);
 
     /**
-     * Destructor for this object to cleanup data and close memory.
+     * Destructor for this object to cleanup data and close file.
      */
-    ~SharedMemory() override;
+    ~SharedFile() override;
 
     bool open() override;
 
@@ -46,12 +47,10 @@ public:
     std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> read() override;
 
 private:
-    const std::string name_;
+    const std::string path_;
     const bool server_;
-    const bool file_;
-    int fd_ = -1;
+    std::fstream file_;
     int offset_ = 0;
-    std::byte *address_ = nullptr;
 
     sem_t *reader_ = nullptr;
     sem_t *writer_ = nullptr;
