@@ -31,7 +31,7 @@ bool Fifo::open() {
         // Create pipe
         unlink(path_.c_str());
 
-        auto res = mkfifo(path_.c_str(), 0660);
+        const auto res = mkfifo(path_.c_str(), 0660);
         if (res == -1) {
             perror("Fifo::open (mkfifo)");
             return false;
@@ -39,7 +39,7 @@ bool Fifo::open() {
     }
 
     // Open pipe
-    auto flag = readonly_ ? O_RDWR | O_NONBLOCK : O_RDWR;
+    const auto flag = readonly_ ? O_RDWR | O_NONBLOCK : O_RDWR;
     fd_ = ::open(path_.c_str(), flag);
     if (fd_ == -1) {
         perror("Fifo::open (open)");
@@ -77,7 +77,7 @@ bool Fifo::await_data() {
         return false;
 
     // Poll events and block until one is available
-    auto res = poll(fd_, WAIT_TIME);
+    const auto res = poll(fd_, WAIT_TIME);
     if (res == -1)
         perror("Fifo::await_data (poll)");
 
@@ -90,7 +90,7 @@ bool Fifo::has_data() const {
         return false;
 
     // Poll events and block for 1ms
-    auto res = poll(fd_, 1);
+    const auto res = poll(fd_, 1);
     if (res == -1)
         perror("Fifo::has_data (poll)");
 
@@ -105,19 +105,19 @@ bool Fifo::write(const IDataObject &obj) {
         return false;
 
     // Serialize body
-    auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
+    const auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
     if (size == -1)
         return false;
 
     last_id_++;
-    auto timestamp = get_timestamp();
+    const auto timestamp = get_timestamp();
     DataHeader header(last_id_, obj.get_type(), size, timestamp);
 
     // Serialize header
     header.serialize(buffer_.data(), header_size);
 
     // Write data into pipe
-    auto res = ::write(fd_, buffer_.data(), header_size + size);
+    const auto res = ::write(fd_, buffer_.data(), header_size + size);
 
     if (res == -1)
         perror("Fifo::write (write)");
@@ -148,11 +148,11 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> Fifo::read(
     assert(header_size == result);
 
     // Deserialize header
-    auto optional = DataHeader::deserialize(buffer_.data(), result);
+    const auto optional = DataHeader::deserialize(buffer_.data(), result);
     if (!optional)
         return CommunicationError::INVALID_HEADER;
 
-    auto header = *optional;
+    const auto header = *optional;
 
     result = ::read(fd_, buffer_.data(), header.get_body_size());
     if (result == -1) {
@@ -168,10 +168,10 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> Fifo::read(
 
     assert(header.get_body_size() == result);
 
-    auto body = deserialize_data_object(header.get_type(), buffer_.data(), header.get_body_size());
+    const auto body = deserialize_data_object(header.get_type(), buffer_.data(), header.get_body_size());
 
     if (std::holds_alternative<DataObject>(body)) {
-        auto obj = std::get<DataObject>(body);
+        const auto obj = std::get<DataObject>(body);
         return std::make_tuple(header, obj);
     } else {
         return std::get<CommunicationError>(body);

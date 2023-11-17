@@ -44,6 +44,21 @@ public:
 
     std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> read() override;
 
+    /**
+     * Name or path of the memory.
+     */
+    const std::string &name() const { return name_; }
+
+    /**
+     * Whether is handler manages the memory.
+     */
+    bool server() const { return server_; }
+
+    /**
+     * Whether a mapped file is used.
+     */
+    bool file() const { return file_; }
+
 private:
     const std::string name_;
     const bool server_;

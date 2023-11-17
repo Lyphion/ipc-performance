@@ -177,7 +177,7 @@ bool SharedMemory::has_data() const {
 
     // Check if data is available
     int value;
-    auto res = sem_getvalue(reader_, &value);
+    const auto res = sem_getvalue(reader_, &value);
     if (res == -1)
         perror("SharedMemory::has_data (sem_getvalue)");
 
@@ -192,21 +192,21 @@ bool SharedMemory::write(const IDataObject &obj) {
         return false;
 
     // Wait until memory is available
-    auto res = sem_wait(writer_);
+    const auto res = sem_wait(writer_);
     if (res == -1) {
         perror("SharedMemory::write (sem_wait)");
         return false;
     }
 
     // Serialize body
-    auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
+    const auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
     if (size == -1) {
         sem_post(writer_);
         return false;
     }
 
     last_id_++;
-    auto timestamp = get_timestamp();
+    const auto timestamp = get_timestamp();
     DataHeader header(last_id_, obj.get_type(), size, timestamp);
 
     // Serialize header
@@ -228,7 +228,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedMemor
         return CommunicationError::CONNECTION_CLOSED;
 
     // Wait and check if data is still available
-    auto res = sem_trywait(reader_);
+    const auto res = sem_trywait(reader_);
     if (res == -1) {
         if (errno == EAGAIN) {
             return CommunicationError::NO_DATA_AVAILABLE;
@@ -244,17 +244,17 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedMemor
     sem_post(writer_);
 
     // Deserialize header
-    auto optional = DataHeader::deserialize(buffer_.data(), BUFFER_SIZE);
+    const auto optional = DataHeader::deserialize(buffer_.data(), BUFFER_SIZE);
     if (!optional)
         return CommunicationError::INVALID_HEADER;
 
-    auto header = *optional;
+    const auto header = *optional;
     assert(header.get_body_size() <= BUFFER_SIZE - header_size);
 
-    auto body = deserialize_data_object(header.get_type(), &buffer_[header_size], header.get_body_size());
+    const auto body = deserialize_data_object(header.get_type(), &buffer_[header_size], header.get_body_size());
 
     if (std::holds_alternative<DataObject>(body)) {
-        auto obj = std::get<DataObject>(body);
+        const auto obj = std::get<DataObject>(body);
         return std::make_tuple(header, obj);
     } else {
         return std::get<CommunicationError>(body);

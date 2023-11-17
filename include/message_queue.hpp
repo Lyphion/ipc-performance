@@ -41,6 +41,11 @@ public:
      */
     const std::string &path() const { return path_; }
 
+    /**
+     * Whether is message queue is targeted for read only.
+     */
+    bool readonly() const { return readonly_; }
+
 private:
     const std::string path_;
     const bool readonly_;

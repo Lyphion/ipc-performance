@@ -63,8 +63,8 @@ bool StreamSocket::create_server() {
         remove(std::get<0>(address_).sun_path);
 
         // Bind socket for listing
-        auto address = std::get<0>(address_);
-        if (bind(sfd_, reinterpret_cast<sockaddr *>(&address), sizeof(sockaddr_un)) == -1) {
+        const auto address = std::get<0>(address_);
+        if (bind(sfd_, reinterpret_cast<const sockaddr *>(&address), sizeof(sockaddr_un)) == -1) {
             perror("StreamSocket::create_server (bind)");
             return false;
         }
@@ -80,8 +80,8 @@ bool StreamSocket::create_server() {
             return false;
 
         // Bind socket for listing
-        auto address = std::get<1>(address_);
-        if (bind(sfd_, reinterpret_cast<sockaddr *>(&address), sizeof(sockaddr_in)) == -1) {
+        const auto address = std::get<1>(address_);
+        if (bind(sfd_, reinterpret_cast<const sockaddr *>(&address), sizeof(sockaddr_in)) == -1) {
             perror("StreamSocket::create_server (bind)");
             return false;
         }
@@ -110,8 +110,8 @@ bool StreamSocket::create_client() {
             return false;
 
         // Connect to server
-        auto address = std::get<0>(address_);
-        if (connect(sfd_, reinterpret_cast<sockaddr *>(&address), sizeof(sockaddr_un)) == -1) {
+        const auto address = std::get<0>(address_);
+        if (connect(sfd_, reinterpret_cast<const sockaddr *>(&address), sizeof(sockaddr_un)) == -1) {
             perror("StreamSocket::create_client (connect)");
             return false;
         }
@@ -127,8 +127,8 @@ bool StreamSocket::create_client() {
             return false;
 
         // Connect to server
-        auto address = std::get<1>(address_);
-        if (connect(sfd_, reinterpret_cast<sockaddr *>(&address), sizeof(sockaddr_in)) == -1) {
+        const auto address = std::get<1>(address_);
+        if (connect(sfd_, reinterpret_cast<const sockaddr *>(&address), sizeof(sockaddr_in)) == -1) {
             perror("StreamSocket::create_client (connect)");
             return false;
         }
@@ -204,7 +204,7 @@ bool StreamSocket::await_data() {
     }
 
     // Poll events and block until one is available
-    auto res = poll(cfd_, WAIT_TIME);
+    const auto res = poll(cfd_, WAIT_TIME);
     if (res == -1)
         perror("StreamSocket::await_data (poll)");
 
@@ -217,7 +217,7 @@ bool StreamSocket::has_data() const {
         return false;
 
     // Poll events and block for 1ms
-    auto res = poll(cfd_, 1);
+    const auto res = poll(cfd_, 1);
     if (res == -1)
         perror("StreamSocket::has_data (poll)");
 
@@ -232,19 +232,19 @@ bool StreamSocket::write(const IDataObject &obj) {
         return false;
 
     // Serialize body
-    auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
+    const auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
     if (size == -1)
         return false;
 
     last_id_++;
-    auto timestamp = get_timestamp();
+    const auto timestamp = get_timestamp();
     DataHeader header(last_id_, obj.get_type(), size, timestamp);
 
     // Serialize header
     header.serialize(buffer_.data(), header_size);
 
     // Write data into socket
-    auto res = send(sfd_, buffer_.data(), header_size + size, 0);
+    const auto res = send(sfd_, buffer_.data(), header_size + size, 0);
     if (res == -1)
         perror("StreamSocket::write (send)");
 
@@ -274,11 +274,11 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> StreamSocke
     assert(header_size == result);
 
     // Deserialize header
-    auto optional = DataHeader::deserialize(buffer_.data(), result);
+    const auto optional = DataHeader::deserialize(buffer_.data(), result);
     if (!optional)
         return CommunicationError::INVALID_HEADER;
 
-    auto header = *optional;
+    const auto header = *optional;
 
     result = recv(cfd_, buffer_.data(), header.get_body_size(), 0);
     if (result == -1) {
@@ -294,10 +294,10 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> StreamSocke
 
     assert(header.get_body_size() == result);
 
-    auto body = deserialize_data_object(header.get_type(), buffer_.data(), header.get_body_size());
+    const auto body = deserialize_data_object(header.get_type(), buffer_.data(), header.get_body_size());
 
     if (std::holds_alternative<DataObject>(body)) {
-        auto obj = std::get<DataObject>(body);
+        const auto obj = std::get<DataObject>(body);
         return std::make_tuple(header, obj);
     } else {
         return std::get<CommunicationError>(body);
@@ -306,7 +306,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> StreamSocke
 
 bool StreamSocket::build_address() {
     if (unix_) {
-        auto path = std::get<0>(parameters_);
+        const auto path = std::get<0>(parameters_);
 
         // Construct unix server socket
         sockaddr_un s_addr{};
@@ -314,8 +314,8 @@ bool StreamSocket::build_address() {
         strncpy(s_addr.sun_path, path.c_str(), sizeof(s_addr.sun_path) - 1);
         address_ = s_addr;
     } else {
-        auto address = std::get<0>(parameters_);
-        auto port = *std::get<1>(parameters_);
+        const auto address = std::get<0>(parameters_);
+        const auto port = *std::get<1>(parameters_);
 
         // Construct internet server socket
         sockaddr_in s_addr{};

@@ -5,6 +5,9 @@
 
 namespace ipc {
 
+JavaSymbol::JavaSymbol(std::uint64_t address, std::uint32_t length, std::string symbol)
+        : address_(address), length_(length), symbol_(std::move(symbol)) {}
+
 int JavaSymbol::serialize(std::byte *buffer, unsigned int size) const {
     constexpr auto header_size = sizeof(JavaSymbol::address_)
                                  + sizeof(JavaSymbol::length_) + sizeof(std::uint32_t);

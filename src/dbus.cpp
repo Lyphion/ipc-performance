@@ -48,7 +48,7 @@ bool DBus::create_server() {
     }
 
     // request our name on the bus and check for errors
-    auto ret = dbus_bus_request_name(con_, name_.c_str(), DBUS_NAME_FLAG_REPLACE_EXISTING, &err);
+    const auto ret = dbus_bus_request_name(con_, name_.c_str(), DBUS_NAME_FLAG_REPLACE_EXISTING, &err);
     if (dbus_error_is_set(&err)) {
         fprintf(stderr, "Name Error (%s)\n", err.message);
         dbus_error_free(&err);
@@ -105,7 +105,7 @@ bool DBus::await_data() {
         return false;
 
     // Poll events and block until one is available
-    auto res = dbus_connection_read_write(con_, WAIT_TIME);
+    const auto res = dbus_connection_read_write(con_, WAIT_TIME);
     return res != 0;
 }
 
@@ -115,7 +115,7 @@ bool DBus::has_data() const {
         return false;
 
     // Poll events and block for 1ms
-    auto res = dbus_connection_read_write(con_, 1);
+    const auto res = dbus_connection_read_write(con_, 1);
     return res != 0;
 }
 
@@ -125,10 +125,10 @@ bool DBus::write(const IDataObject &obj) {
         return false;
 
     // Build message object path
-    auto path = PATH_PREFIX + std::to_string(static_cast<int>(obj.get_type()));
+    const auto path = PATH_PREFIX + std::to_string(static_cast<int>(obj.get_type()));
 
     // Prepare message
-    auto msg = dbus_message_new_method_call(
+    const auto msg = dbus_message_new_method_call(
             name_.c_str(),          // target for the method call
             path.c_str(),           // object to call on
             INTERFACE_NAME.c_str(), // interface to call on
@@ -138,14 +138,14 @@ bool DBus::write(const IDataObject &obj) {
         return false;
 
     // Serialize body
-    auto size = obj.serialize(buffer_.data(), BUFFER_SIZE);
+    const auto size = obj.serialize(buffer_.data(), BUFFER_SIZE);
     if (size == -1) {
         dbus_message_unref(msg);
         return false;
     }
 
     last_id_++;
-    auto timestamp = get_timestamp();
+    const auto timestamp = get_timestamp();
 
     // Prepare arguments
     DBusMessageIter args;
@@ -173,7 +173,7 @@ bool DBus::write(const IDataObject &obj) {
         return false;
     }
 
-    auto ptr = buffer_.data();
+    const auto ptr = buffer_.data();
     if (!dbus_message_iter_append_fixed_array(&arr, DBUS_TYPE_BYTE, &ptr, size)) {
         fprintf(stderr, "Out Of Memory!\n");
         dbus_message_unref(msg);
@@ -205,7 +205,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> DBus::read(
         return CommunicationError::CONNECTION_CLOSED;
 
     // Read and remove message from dbus
-    auto msg = dbus_connection_pop_message(con_);
+    const auto msg = dbus_connection_pop_message(con_);
     if (msg == nullptr)
         return CommunicationError::NO_DATA_AVAILABLE;
 
@@ -224,8 +224,8 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> DBus::read(
     }
 
     // Get object type
-    auto path = &dbus_message_get_path(msg)[PATH_PREFIX.size()];
-    auto type = static_cast<DataType>(std::stoul(path, nullptr));
+    const auto path = &dbus_message_get_path(msg)[PATH_PREFIX.size()];
+    const auto type = static_cast<DataType>(std::stoul(path, nullptr));
 
     // Read id
     if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_UINT32) {
@@ -263,12 +263,12 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> DBus::read(
     dbus_message_iter_recurse(&args, &arr);
     dbus_message_iter_get_fixed_array(&arr, &ptr, &size);
 
-    auto body = deserialize_data_object(type, ptr, size);
+    const auto body = deserialize_data_object(type, ptr, size);
     dbus_message_unref(msg);
 
     if (std::holds_alternative<DataObject>(body)) {
-        auto header = DataHeader(id, type, size, timestamp);
-        auto obj = std::get<DataObject>(body);
+        const auto header = DataHeader(id, type, size, timestamp);
+        const auto obj = std::get<DataObject>(body);
         return std::make_tuple(header, obj);
     } else {
         return std::get<CommunicationError>(body);

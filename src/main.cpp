@@ -66,7 +66,7 @@ void run_client(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
                 "test123"
         );
 
-        auto res = handler->write(data);
+        const auto res = handler->write(data);
         if (!res) {
             std::cout << "Error while writing data" << std::endl;
         }
@@ -89,7 +89,7 @@ void run_server(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
                 continue;
         }
 
-        auto result = handler->read();
+        const auto result = handler->read();
         more_data = !std::holds_alternative<ipc::CommunicationError>(result);
 
         std::visit(overloaded{
@@ -102,7 +102,7 @@ void run_server(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
 
                     // Clear old connection and try to find new client if connection closed and handler is stream socket
                     if (error == ipc::CommunicationError::CONNECTION_CLOSED) {
-                        if (auto s = dynamic_cast<ipc::StreamSocket *>(handler.get())) {
+                        if (const auto s = dynamic_cast<ipc::StreamSocket *>(handler.get())) {
                             if (s->accept()) {
                                 std::cout << "Client reconnected" << std::endl;
                             }
@@ -116,6 +116,9 @@ void run_server(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
                     std::visit(overloaded{
                             [](const ipc::JavaSymbol &symbol) {
                                 std::cout << "JavaSymbol" << symbol << std::endl;
+                            },
+                            [](const ipc::Ping &ping) {
+                                std::cout << "Ping" << ping << std::endl;
                             }
                     }, data);
                     i++;
@@ -133,9 +136,9 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    std::string type(argv[1]);
-    std::string path(argv[2]);
-    auto readonly = strcmp(argv[3], "reader") == 0;
+    const std::string type(argv[1]);
+    const std::string path(argv[2]);
+    const auto readonly = strcmp(argv[3], "reader") == 0;
 
     auto handler = create_handler(type, path, readonly);
     if (!handler) {
@@ -145,7 +148,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Loading handler... (" << type << ')' << std::endl;
 
-    auto res = handler->open();
+    const auto res = handler->open();
     if (!res) {
         std::cout << "Error opening handler" << std::endl;
         return EXIT_FAILURE;

@@ -2,6 +2,9 @@
 
 namespace ipc {
 
+/**
+ * Enumeration representing errors of the connection handler.
+ */
 enum class CommunicationError {
     /// Connection has been closed
     CONNECTION_CLOSED = 0,

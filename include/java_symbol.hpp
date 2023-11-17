@@ -21,8 +21,7 @@ public:
      * @param length  Length of the symbol address area.
      * @param symbol  Name of the symbol.
      */
-    JavaSymbol(std::uint64_t address, std::uint32_t length, std::string symbol)
-            : address_(address), length_(length), symbol_(std::move(symbol)) {}
+    JavaSymbol(std::uint64_t address, std::uint32_t length, std::string symbol);
 
     ~JavaSymbol() override = default;
 

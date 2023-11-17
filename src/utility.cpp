@@ -43,9 +43,18 @@ std::variant<DataObject, CommunicationError> deserialize_data_object(DataType ty
         case DataType::INVALID:
             return CommunicationError::INVALID_DATA;
 
+        case DataType::PING: {
+            // Deserialize Ping
+            const auto data = Ping::deserialize(buffer, size);
+            if (!data)
+                return CommunicationError::INVALID_DATA;
+
+            return *data;
+        }
+
         case DataType::JAVA_SYMBOL_LOOKUP: {
             // Deserialize Java Symbols
-            auto data = JavaSymbol::deserialize(buffer, size);
+            const auto data = JavaSymbol::deserialize(buffer, size);
             if (!data)
                 return CommunicationError::INVALID_DATA;
 

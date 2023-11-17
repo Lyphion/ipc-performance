@@ -8,11 +8,12 @@
 #include "data_object.hpp"
 #include "data_header.hpp"
 #include "java_symbol.hpp"
+#include "ping.hpp"
 
 namespace ipc {
 
 /// Variant for all data types
-using DataObject = std::variant<JavaSymbol>;
+using DataObject = std::variant<Ping, JavaSymbol>;
 
 /**
  * Interface for all inter-process communication handlers.

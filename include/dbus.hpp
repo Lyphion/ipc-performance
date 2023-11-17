@@ -51,6 +51,16 @@ public:
 
     std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> read() override;
 
+    /**
+     * Name of the DBus handler.
+     */
+    const std::string &name() const { return name_; }
+
+    /**
+     * Whether is dbus is the server.
+     */
+    bool server() const { return server_; }
+
 private:
     /**
      * Create dbus server.

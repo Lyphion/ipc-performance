@@ -45,6 +45,16 @@ public:
 
     std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> read() override;
 
+    /**
+     * Path of the file.
+     */
+    const std::string &path() const { return path_; }
+
+    /**
+     * Whether is handler manages the file.
+     */
+    bool server() const { return server_; }
+
 private:
     const std::string path_;
     const bool server_;

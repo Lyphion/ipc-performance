@@ -22,8 +22,7 @@ public:
      * @param body_size Size of the actual message.
      * @param timestamp Timestamp when the message/header was created.
      */
-    DataHeader(std::uint32_t id, DataType type, std::uint16_t body_size, std::int64_t timestamp)
-            : id_(id), type_(type), body_size_(body_size), timestamp_(timestamp) {}
+    DataHeader(std::uint32_t id, DataType type, std::uint16_t body_size, std::int64_t timestamp);
 
     /**
      * Serialize the header into a buffer.

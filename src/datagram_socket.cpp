@@ -63,8 +63,8 @@ bool DatagramSocket::create_server() {
         remove(std::get<0>(address_).sun_path);
 
         // Bind socket for listing
-        auto address = std::get<0>(address_);
-        if (bind(sfd_, reinterpret_cast<sockaddr *>(&address), sizeof(sockaddr_un)) == -1) {
+        const auto address = std::get<0>(address_);
+        if (bind(sfd_, reinterpret_cast<const sockaddr *>(&address), sizeof(sockaddr_un)) == -1) {
             perror("DatagramSocket::create_server (bind)");
             return false;
         }
@@ -80,8 +80,8 @@ bool DatagramSocket::create_server() {
             return false;
 
         // Bind socket for listing
-        auto address = std::get<1>(address_);
-        if (bind(sfd_, reinterpret_cast<sockaddr *>(&address), sizeof(sockaddr_in)) == -1) {
+        const auto address = std::get<1>(address_);
+        if (bind(sfd_, reinterpret_cast<const sockaddr *>(&address), sizeof(sockaddr_in)) == -1) {
             perror("DatagramSocket::create_server (bind)");
             return false;
         }
@@ -145,7 +145,7 @@ bool DatagramSocket::await_data() {
         return false;
 
     // Poll events and block until one is available
-    auto res = poll(sfd_, WAIT_TIME);
+    const auto res = poll(sfd_, WAIT_TIME);
     if (res == -1)
         perror("DatagramSocket::await_data (poll)");
 
@@ -158,7 +158,7 @@ bool DatagramSocket::has_data() const {
         return false;
 
     // Poll events and block for 1ms
-    auto res = poll(sfd_, 1);
+    const auto res = poll(sfd_, 1);
     if (res == -1)
         perror("DatagramSocket::has_data (poll)");
 
@@ -173,12 +173,12 @@ bool DatagramSocket::write(const IDataObject &obj) {
         return false;
 
     // Serialize body
-    auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
+    const auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
     if (size == -1)
         return false;
 
     last_id_++;
-    auto timestamp = get_timestamp();
+    const auto timestamp = get_timestamp();
     DataHeader header(last_id_, obj.get_type(), size, timestamp);
 
     // Serialize header
@@ -187,10 +187,10 @@ bool DatagramSocket::write(const IDataObject &obj) {
     // Write data into socket
     ssize_t res;
     if (unix_) {
-        auto address = reinterpret_cast<sockaddr *>(&std::get<0>(address_));
+        const auto address = reinterpret_cast<const sockaddr *>(&std::get<0>(address_));
         res = sendto(sfd_, buffer_.data(), header_size + size, 0, address, sizeof(sockaddr_un));
     } else {
-        auto address = reinterpret_cast<sockaddr *>(&std::get<1>(address_));
+       const  auto address = reinterpret_cast<const sockaddr *>(&std::get<1>(address_));
         res = sendto(sfd_, buffer_.data(), header_size + size, 0, address, sizeof(sockaddr_in));
     }
 
@@ -208,7 +208,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> DatagramSoc
         return CommunicationError::CONNECTION_CLOSED;
 
     // Read data from socket
-    auto result = recvfrom(sfd_, buffer_.data(), BUFFER_SIZE, 0, nullptr, nullptr);
+    const auto result = recvfrom(sfd_, buffer_.data(), BUFFER_SIZE, 0, nullptr, nullptr);
     if (result == -1) {
         if (errno == EAGAIN)
             return CommunicationError::NO_DATA_AVAILABLE;
@@ -218,18 +218,18 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> DatagramSoc
     }
 
     // Deserialize header
-    auto optional = DataHeader::deserialize(buffer_.data(), result);
+    const auto optional = DataHeader::deserialize(buffer_.data(), result);
     if (!optional)
         return CommunicationError::INVALID_HEADER;
 
-    auto header = *optional;
+    const auto header = *optional;
     assert(header.get_body_size() == result - header_size);
 
-    auto body = deserialize_data_object(
+    const auto body = deserialize_data_object(
             header.get_type(), &buffer_[header_size], header.get_body_size());
 
     if (std::holds_alternative<DataObject>(body)) {
-        auto obj = std::get<DataObject>(body);
+        const auto obj = std::get<DataObject>(body);
         return std::make_tuple(header, obj);
     } else {
         return std::get<CommunicationError>(body);
@@ -238,7 +238,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> DatagramSoc
 
 bool DatagramSocket::build_address() {
     if (unix_) {
-        auto path = std::get<0>(parameters_);
+        const auto path = std::get<0>(parameters_);
 
         // Construct unix server socket
         sockaddr_un s_addr{};
@@ -246,8 +246,8 @@ bool DatagramSocket::build_address() {
         strncpy(s_addr.sun_path, path.c_str(), sizeof(s_addr.sun_path) - 1);
         address_ = s_addr;
     } else {
-        auto address = std::get<0>(parameters_);
-        auto port = *std::get<1>(parameters_);
+        const auto address = std::get<0>(parameters_);
+        const auto port = *std::get<1>(parameters_);
 
         // Construct internet server socket
         sockaddr_in s_addr{};

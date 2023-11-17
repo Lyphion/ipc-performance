@@ -42,7 +42,7 @@ bool SharedFile::open() {
         sem_unlink((prefix + "w").c_str());
     }
 
-    auto flag = server_ ? O_CREAT : 0;
+    const auto flag = server_ ? O_CREAT : 0;
     reader_ = sem_open((prefix + "r").c_str(), flag, 0660, 0);
     if (reader_ == SEM_FAILED) {
         perror("SharedFile::open (sem_open)");
@@ -92,7 +92,7 @@ bool SharedFile::await_data() {
 
 #if WAIT_TIME == -1
     // Wait for data
-    int res = sem_wait(reader_);
+    const auto res = sem_wait(reader_);
 
     if (res == -1) {
         perror("SharedMemory::await_data (sem_wait)");
@@ -105,7 +105,7 @@ bool SharedFile::await_data() {
 
     wait_time.tv_sec += WAIT_TIME / 1000;
     // Wait for data
-    int res = sem_timedwait(reader_, &wait_time);
+    const auto res = sem_timedwait(reader_, &wait_time);
 
     if (res == -1) {
         if (errno != ETIMEDOUT)
@@ -127,7 +127,7 @@ bool SharedFile::has_data() const {
 
     // Check if data is available
     int value;
-    auto res = sem_getvalue(reader_, &value);
+    const auto res = sem_getvalue(reader_, &value);
     if (res == -1)
         perror("SharedFile::has_data (sem_getvalue)");
 
@@ -142,21 +142,21 @@ bool SharedFile::write(const IDataObject &obj) {
         return false;
 
     // Wait until file is available
-    auto res = sem_wait(writer_);
+    const auto res = sem_wait(writer_);
     if (res == -1) {
         perror("SharedFile::write (sem_wait)");
         return false;
     }
 
     // Serialize body
-    auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
+    const auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
     if (size == -1) {
         sem_post(writer_);
         return false;
     }
 
     last_id_++;
-    auto timestamp = get_timestamp();
+    const auto timestamp = get_timestamp();
     DataHeader header(last_id_, obj.get_type(), size, timestamp);
 
     // Serialize header
@@ -183,7 +183,7 @@ bool SharedFile::write(const IDataObject &obj) {
     }
 
     // Write data
-    auto data = reinterpret_cast<const char *>(buffer_.data());
+    const auto data = reinterpret_cast<const char *>(buffer_.data());
     file_.write(data, static_cast<long>(header_size) + size);
     if (file_.fail()) {
         perror("SharedFile::write (write)");
@@ -206,7 +206,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedFile:
         return CommunicationError::CONNECTION_CLOSED;
 
     // Wait and check if data is still available
-    auto res = sem_trywait(reader_);
+    const auto res = sem_trywait(reader_);
     if (res == -1) {
         if (errno == EAGAIN) {
             return CommunicationError::NO_DATA_AVAILABLE;
@@ -237,7 +237,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedFile:
     }
 
     // Read data
-    auto data = reinterpret_cast<char *>(buffer_.data());
+    const auto data = reinterpret_cast<char *>(buffer_.data());
     file_.read(data, BUFFER_SIZE);
     if (file_.fail() && !file_.eof()) {
         perror("SharedFile::read (read)");
@@ -249,17 +249,17 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedFile:
     sem_post(writer_);
 
     // Deserialize header
-    auto optional = DataHeader::deserialize(buffer_.data(), BUFFER_SIZE);
+    const auto optional = DataHeader::deserialize(buffer_.data(), BUFFER_SIZE);
     if (!optional)
         return CommunicationError::INVALID_HEADER;
 
-    auto header = *optional;
+    const auto header = *optional;
     assert(header.get_body_size() <= BUFFER_SIZE - header_size);
 
-    auto body = deserialize_data_object(header.get_type(), &buffer_[header_size], header.get_body_size());
+    const auto body = deserialize_data_object(header.get_type(), &buffer_[header_size], header.get_body_size());
 
     if (std::holds_alternative<DataObject>(body)) {
-        auto obj = std::get<DataObject>(body);
+        const auto obj = std::get<DataObject>(body);
         return std::make_tuple(header, obj);
     } else {
         return std::get<CommunicationError>(body);

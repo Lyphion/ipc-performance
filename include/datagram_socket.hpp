@@ -51,6 +51,26 @@ public:
 
     std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> read() override;
 
+    /**
+     * Path or address of the socket.
+     */
+    const std::string &path() const { return std::get<0>(parameters_); }
+
+    /**
+     * Port of the socket if internet domain socket.
+     */
+    std::optional<std::uint16_t> port() const { return std::get<1>(parameters_); }
+
+    /**
+     * Whether is socket is the server.
+     */
+    bool server() const { return server_; }
+
+    /**
+     * Whether is socket is local.
+     */
+    bool local() const { return unix_; }
+
 private:
     /**
      * Build addresses for server and client.
