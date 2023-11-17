@@ -120,9 +120,6 @@ bool DBus::write(const IDataObject &obj) {
     if (con_ == nullptr)
         return false;
 
-    DBusError err;
-    dbus_error_init(&err);
-
     // Build message object path
     auto path = PATH_PREFIX + std::to_string(static_cast<int>(obj.get_type()));
 
@@ -133,15 +130,15 @@ bool DBus::write(const IDataObject &obj) {
             INTERFACE_NAME.c_str(), // interface to call on
             METHOD_NAME.c_str());   // method to call
 
-    if (msg == nullptr) {
-        dbus_message_unref(msg);
+    if (msg == nullptr)
         return false;
-    }
 
     // Serialize body
     auto size = obj.serialize(buffer_.data(), BUFFER_SIZE);
-    if (size == -1)
+    if (size == -1) {
+        dbus_message_unref(msg);
         return false;
+    }
 
     last_id_++;
     auto timestamp = get_timestamp();

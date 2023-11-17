@@ -32,25 +32,25 @@ static volatile bool stop = false;
  * @return Pointer to handler.
  */
 std::shared_ptr<ipc::ICommunicationHandler> create_handler(std::string type, const std::string &path, bool reader) {
-    if (std::equal(type.begin(), type.end(), "dbus")) {
+    if (type == "dbus") {
         return std::make_shared<ipc::DBus>("ipc." + path + ".server", reader);
-    } else if (std::equal(type.begin(), type.end(), "fifo")) {
+    } else if (type == "fifo") {
         return std::make_shared<ipc::Fifo>("/tmp/" + path, reader);
-    } else if (std::equal(type.begin(), type.end(), "queue")) {
+    } else if (type == "queue") {
         return std::make_shared<ipc::MessageQueue>("/" + path, reader);
-    } else if (std::equal(type.begin(), type.end(), "dgram")) {
+    } else if (type == "dgram") {
         return std::make_shared<ipc::DatagramSocket>("/tmp/" + path, reader);
-    } else if (std::equal(type.begin(), type.end(), "stream")) {
+    } else if (type == "stream") {
         return std::make_shared<ipc::StreamSocket>("/tmp/" + path, reader);
-    } else if (std::equal(type.begin(), type.end(), "udp")) {
+    } else if (type == "udp") {
         return std::make_shared<ipc::DatagramSocket>(path, 8080, reader);
-    } else if (std::equal(type.begin(), type.end(), "tcp")) {
+    } else if (type == "tcp") {
         return std::make_shared<ipc::StreamSocket>(path, 8080, reader);
-    } else if (std::equal(type.begin(), type.end(), "memory")) {
+    } else if (type == "memory") {
         return std::make_shared<ipc::SharedMemory>(path, reader, false);
-    } else if (std::equal(type.begin(), type.end(), "mapped")) {
+    } else if (type == "mapped") {
         return std::make_shared<ipc::SharedMemory>("/tmp/" + path, reader, true);
-    } else if (std::equal(type.begin(), type.end(), "file")) {
+    } else if (type == "file") {
         return std::make_shared<ipc::SharedFile>("/tmp/" + path, reader);
     }
 
