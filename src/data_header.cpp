@@ -5,30 +5,32 @@
 
 namespace ipc {
 
-unsigned int DataHeader::serialize(char *buffer, const unsigned int size) const {
+DataHeader::DataHeader(std::uint32_t id, DataType type, std::uint16_t body_size, std::int64_t timestamp)
+        : id_(id), type_(type), body_size_(body_size), timestamp_(timestamp) {}
+
+int DataHeader::serialize(std::byte *buffer, const unsigned int size) const {
     constexpr auto header_size = sizeof(DataHeader);
     static_assert(header_size == 16, "Size of header should match");
 
     // Not enough space in buffer
     if (size < header_size)
-        return 0;
+        return -1;
 
-    auto header_data = reinterpret_cast<const char *>(this);
+    const auto header_data = reinterpret_cast<const char *>(this);
     std::memcpy(buffer, header_data, header_size);
     return header_size;
 }
 
-DataHeader DataHeader::deserialize(const char *buffer, unsigned int size) {
+std::optional<DataHeader> DataHeader::deserialize(const std::byte *buffer, unsigned int size) {
     constexpr auto header_size = sizeof(DataHeader);
     static_assert(header_size == 16, "Size of header should match");
 
-    auto header = DataHeader(0, DataType::INVALID, 0, 0);
-
     // Not enough space in buffer
     if (size < header_size)
-        return header;
+        return std::nullopt;
 
-    auto header_data = reinterpret_cast<char *>(&header);
+    DataHeader header(0, DataType::INVALID, 0, 0);
+    const auto header_data = reinterpret_cast<char *>(&header);
     std::memcpy(header_data, buffer, header_size);
 
     return header;
@@ -37,11 +39,10 @@ DataHeader DataHeader::deserialize(const char *buffer, unsigned int size) {
 std::ostream &operator<<(std::ostream &outs, const DataHeader &header) {
     std::ios_base::fmtflags f(outs.flags());
 
-    outs << std::hex << std::setfill('0')
-         << "(0x" << std::setw(sizeof(header.get_id()) * 2) << header.get_id()
-         << ", 0x" << std::setw(sizeof(header.get_type()) * 2) << header.get_type()
-         << ", 0x" << std::setw(sizeof(header.get_body_size()) * 2) << header.get_body_size()
-         << ", 0x" << std::setw(sizeof(header.get_timestamp()) * 2) << header.get_timestamp() << ")";
+    outs << std::setfill('0')
+         << '(' << header.get_id() << ", " << static_cast<std::uint16_t>(header.get_type())
+         << ", 0x" << std::hex << std::setw(sizeof(header.get_body_size()) * 2) << header.get_body_size()
+         << ", " << std::dec << header.get_timestamp() << ')';
     outs.flags(f);
 
     return outs;

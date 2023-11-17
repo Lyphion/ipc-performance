@@ -1,7 +1,10 @@
 #pragma once
 
-#include <ostream>
+#include <cstddef>
 #include <cstdint>
+#include <ostream>
+#include <optional>
+
 #include "data_type.hpp"
 
 namespace ipc {
@@ -19,8 +22,7 @@ public:
      * @param body_size Size of the actual message.
      * @param timestamp Timestamp when the message/header was created.
      */
-    DataHeader(std::uint32_t id, DataType type, std::uint16_t body_size, std::int64_t timestamp)
-            : id_(id), type_(type), body_size_(body_size), timestamp_(timestamp) {}
+    DataHeader(std::uint32_t id, DataType type, std::uint16_t body_size, std::int64_t timestamp);
 
     /**
      * Serialize the header into a buffer.
@@ -28,16 +30,16 @@ public:
      * @param buffer Buffer to serialize the header into.
      * @param size   Size of the buffer.
      *
-     * @return Total number of bytes written into the buffer.
+     * @return Total number of bytes written into the buffer or -1 if an error occurred.
      */
-    unsigned int serialize(char *buffer, unsigned int size) const;
+    int serialize(std::byte *buffer, unsigned int size) const;
 
     /**
      * Check if this header is valid.
      *
      * @return True, if header is valid.
      */
-    bool is_valid() const { return type_ != DataType::INVALID; }
+    constexpr bool is_valid() const { return type_ != DataType::INVALID; }
 
     /**
      * Id of the message.
@@ -65,9 +67,9 @@ public:
      * @param buffer Buffer to deserialize the header from.
      * @param size   Size of the buffer.
      *
-     * @return Deserialize header from buffer.
+     * @return Deserialized header from buffer.
      */
-    static DataHeader deserialize(const char *buffer, unsigned int size);
+    static std::optional<DataHeader> deserialize(const std::byte *buffer, unsigned int size);
 
 private:
     std::uint32_t id_;
