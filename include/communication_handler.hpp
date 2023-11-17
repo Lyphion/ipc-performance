@@ -53,7 +53,7 @@ public:
      * Poll new data from the handler.
      *
      * @return True, if poll was successful.
-     * @remark Method will block until an event occurred.
+     * @remark Method will block until an event or timeout occurred.
      */
     virtual bool await_data() = 0;
 
@@ -68,6 +68,8 @@ public:
      * Write a data object into the inter-process communication handler.
      *
      * @param obj Object to write into the handler.
+     *
+     * @return True, if write was successful.
      */
     virtual bool write(const IDataObject &obj) = 0;
 
