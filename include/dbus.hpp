@@ -15,9 +15,6 @@ namespace ipc {
 
 class DBus : public ICommunicationHandler {
 public:
-    /// Size of the buffer and limit of the body.
-    static constexpr short BUFFER_SIZE = 512;
-
     /// Prefix for object type path.
     static const inline std::string PATH_PREFIX = "/ipc/object/";
 
@@ -44,7 +41,9 @@ public:
 
     bool close() override;
 
-    bool await_data() const override;
+    bool is_open() const override;
+
+    bool await_data() override;
 
     bool has_data() const override;
 

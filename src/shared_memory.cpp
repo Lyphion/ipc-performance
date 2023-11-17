@@ -131,31 +131,39 @@ bool SharedMemory::close() {
     return true;
 }
 
-bool SharedMemory::await_data() const {
+bool SharedMemory::is_open() const {
+    return fd_ != -1;
+}
+
+bool SharedMemory::await_data() {
     // Check if memory is already closed
     if (fd_ == -1)
         return false;
 
-    int res;
-    if constexpr (WAIT_TIME == -1) {
-        // Wait for data
-        res = sem_wait(reader_);
-    } else {
-        timespec wait_time{};
-        if (clock_gettime(CLOCK_REALTIME, &wait_time) == -1)
-            return false;
+#if WAIT_TIME == -1
+    // Wait for data
+    int res = sem_wait(reader_);
 
-        wait_time.tv_sec += WAIT_TIME / 1000;
-        // Wait for data
-        res = sem_timedwait(reader_, &wait_time);
+    if (res == -1) {
+        perror("SharedMemory::await_data (sem_wait)");
+        return false;
     }
+#else
+    timespec wait_time{};
+    if (clock_gettime(CLOCK_REALTIME, &wait_time) == -1)
+        return false;
+
+    wait_time.tv_sec += WAIT_TIME / 1000;
+    // Wait for data
+    int res = sem_timedwait(reader_, &wait_time);
 
     if (res == -1) {
         if (errno != ETIMEDOUT)
-            perror("SharedMemory::await_data (sem_wait)");
+            perror("SharedMemory::await_data (sem_timedwait)");
 
         return false;
     }
+#endif
 
     // Increment semaphore (because this method just checks if data is available)
     sem_post(reader_);

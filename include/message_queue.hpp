@@ -6,8 +6,8 @@ namespace ipc {
 
 class MessageQueue : public ICommunicationHandler {
 public:
-    /// Size of the buffer and limit of header and body combined.
-    static constexpr short BUFFER_SIZE = 512;
+    /// Amount of elements in the queue.
+    static constexpr short QUEUE_SIZE = 10;
 
     /**
      * Create a new message queue.
@@ -26,7 +26,9 @@ public:
 
     bool close() override;
 
-    bool await_data() const override;
+    bool is_open() const override;
+
+    bool await_data() override;
 
     bool has_data() const override;
 

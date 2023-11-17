@@ -10,9 +10,6 @@ namespace ipc {
 
 class Fifo : public ICommunicationHandler {
 public:
-    /// Size of the buffer and limit of header and body combined.
-    static constexpr short BUFFER_SIZE = 512;
-
     /**
      * Create a new Fifo pipe.
      *
@@ -30,7 +27,9 @@ public:
 
     bool close() override;
 
-    bool await_data() const override;
+    bool is_open() const override;
+
+    bool await_data() override;
 
     bool has_data() const override;
 

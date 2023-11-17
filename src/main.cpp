@@ -31,7 +31,7 @@ static volatile bool stop = false;
  *
  * @return Pointer to handler.
  */
-std::shared_ptr<ipc::ICommunicationHandler> create_handler(std::string type, const std::string &path, bool reader) {
+std::shared_ptr<ipc::ICommunicationHandler> create_handler(const std::string &type, const std::string &path, bool reader) {
     if (type == "dbus") {
         return std::make_shared<ipc::DBus>("ipc." + path + ".server", reader);
     } else if (type == "fifo") {
@@ -59,7 +59,7 @@ std::shared_ptr<ipc::ICommunicationHandler> create_handler(std::string type, con
 
 void run_client(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
     int i = 1;
-    while (!stop) {
+    while (!stop && handler->is_open()) {
         ipc::JavaSymbol data(
                 static_cast<std::int64_t>(rand()) << 32 | rand(),
                 rand(),
@@ -79,10 +79,10 @@ void run_client(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
 }
 
 void run_server(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
-    int i = 0;
+    int i = 1;
     bool more_data = false;
 
-    while (!stop) {
+    while (!stop && handler->is_open()) {
         if (!more_data) {
             std::cout << "Await new data..." << std::endl;
             if (!handler->await_data())
@@ -94,15 +94,18 @@ void run_server(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
 
         std::visit(overloaded{
                 [&handler](const ipc::CommunicationError &error) {
+                    // 'No data available' is not a real error, so ignore it
                     if (error == ipc::CommunicationError::NO_DATA_AVAILABLE)
                         return;
 
                     std::cout << "Error while reading data (Error: " << static_cast<int>(error) << ')' << std::endl;
 
+                    // Clear old connection and try to find new client if connection closed and handler is stream socket
                     if (error == ipc::CommunicationError::CONNECTION_CLOSED) {
                         if (auto s = dynamic_cast<ipc::StreamSocket *>(handler.get())) {
-                            s->accept();
-                            std::cout << "Client reconnected" << std::endl;
+                            if (s->accept()) {
+                                std::cout << "Client reconnected" << std::endl;
+                            }
                         }
                     }
                 },
@@ -159,8 +162,12 @@ int main(int argc, char *argv[]) {
 
     std::cin.get();
 
+    std::cout << "Shutting down..." << std::endl;
     stop = true;
     t.join();
+
+    handler->close();
+    std::cout << "Handler closed" << std::endl;
 
     return EXIT_SUCCESS;
 }

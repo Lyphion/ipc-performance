@@ -19,6 +19,9 @@ using DataObject = std::variant<JavaSymbol>;
  */
 class ICommunicationHandler {
 public:
+    /// Size of the buffer and limit of header and body combined.
+    static constexpr short BUFFER_SIZE = 512;
+
     /// Time to wait for each poll in milliseconds.
     static constexpr short WAIT_TIME = 5000;
 
@@ -39,12 +42,19 @@ public:
     virtual bool close() = 0;
 
     /**
+     * Check if the handler is opened.
+     *
+     * @return True, if handler is open.
+     */
+    virtual bool is_open() const = 0;
+
+    /**
      * Poll new data from the handler.
      *
      * @return True, if poll was successful.
      * @remark Method will block until an event occurred.
      */
-    virtual bool await_data() const = 0;
+    virtual bool await_data() = 0;
 
     /**
      * Check if new data is available.

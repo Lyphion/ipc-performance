@@ -16,9 +16,6 @@ namespace ipc {
 
 class StreamSocket : public ICommunicationHandler {
 public:
-    /// Size of the buffer and limit of header and body combined.
-    static constexpr short BUFFER_SIZE = 512;
-
     /// Maximum number of waiting socket connections.
     static constexpr unsigned char BACKLOG = 5;
 
@@ -48,6 +45,8 @@ public:
 
     bool close() override;
 
+    bool is_open() const override;
+
     /**
      * Accept new clients.
      *
@@ -56,7 +55,7 @@ public:
      */
     bool accept();
 
-    bool await_data() const override;
+    bool await_data() override;
 
     bool has_data() const override;
 

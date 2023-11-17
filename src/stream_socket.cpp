@@ -49,7 +49,7 @@ bool StreamSocket::open() {
 bool StreamSocket::create_server() {
     // Open socket depending on type
     if (unix_) {
-        sfd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+        sfd_ = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
         if (sfd_ == -1) {
             perror("StreamSocket::create_server (socket)");
             return false;
@@ -69,7 +69,7 @@ bool StreamSocket::create_server() {
             return false;
         }
     } else {
-        sfd_ = socket(AF_INET, SOCK_STREAM, 0);
+        sfd_ = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
         if (sfd_ == -1) {
             perror("StreamSocket::create_server (socket)");
             return false;
@@ -93,8 +93,7 @@ bool StreamSocket::create_server() {
         return false;
     }
 
-    // Wait for client
-    return accept();
+    return true;
 }
 
 bool StreamSocket::create_client() {
@@ -160,6 +159,10 @@ bool StreamSocket::close() {
     return true;
 }
 
+bool StreamSocket::is_open() const {
+    return sfd_ != -1;
+}
+
 bool StreamSocket::accept() {
     // Check if socket is open
     if (sfd_ == -1)
@@ -171,19 +174,34 @@ bool StreamSocket::accept() {
         cfd_ = -1;
     }
 
+    // Check if new clients are available
+    auto res = poll(sfd_, WAIT_TIME);
+    if (res == -1) {
+        perror("StreamSocket::accept (poll)");
+        return false;
+    }
+
+    // No new clients available
+    if (res == 0)
+        return false;
+
     // Accept new client
-    auto res = accept4(sfd_, nullptr, nullptr, SOCK_NONBLOCK);
-    if (res == -1)
-        perror("StreamSocket::accept (accept4)");
+    res = ::accept(sfd_, nullptr, nullptr);
+    if (res == -1) {
+        perror("StreamSocket::accept (accept)");
+        return false;
+    }
 
     cfd_ = res;
-    return res != -1;
+    return true;
 }
 
-bool StreamSocket::await_data() const {
+bool StreamSocket::await_data() {
     // Check if socket is open
-    if (cfd_ == -1)
-        return false;
+    if (cfd_ == -1) {
+        if (!accept())
+            return false;
+    }
 
     // Poll events and block until one is available
     auto res = poll(cfd_, WAIT_TIME);

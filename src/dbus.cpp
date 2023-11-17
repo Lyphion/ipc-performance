@@ -95,7 +95,11 @@ bool DBus::close() {
     return true;
 }
 
-bool DBus::await_data() const {
+bool DBus::is_open() const {
+    return con_ != nullptr;
+}
+
+bool DBus::await_data() {
     // Check if dbus is open
     if (con_ == nullptr)
         return false;

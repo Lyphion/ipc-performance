@@ -135,7 +135,11 @@ bool DatagramSocket::close() {
     return true;
 }
 
-bool DatagramSocket::await_data() const {
+bool DatagramSocket::is_open() const {
+    return sfd_ != -1;
+}
+
+bool DatagramSocket::await_data() {
     // Check if socket is open
     if (sfd_ == -1)
         return false;

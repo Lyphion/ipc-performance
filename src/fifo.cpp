@@ -67,7 +67,11 @@ bool Fifo::close() {
     return true;
 }
 
-bool Fifo::await_data() const {
+bool Fifo::is_open() const {
+    return fd_ != -1;
+}
+
+bool Fifo::await_data() {
     // Check if pipe is open
     if (fd_ == -1)
         return false;

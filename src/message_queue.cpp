@@ -33,10 +33,10 @@ bool MessageQueue::open() {
     // Configure block size
     mq_attr attr{};
     attr.mq_msgsize = BUFFER_SIZE;
-    attr.mq_maxmsg = 10;
+    attr.mq_maxmsg = QUEUE_SIZE;
 
     // Create and open message queue
-    auto flag = readonly_ ? (O_RDWR | O_CREAT | O_NONBLOCK) : (O_RDWR | O_CREAT);
+    auto flag = readonly_ ? O_RDWR | O_CREAT | O_NONBLOCK : O_RDWR | O_CREAT;
     mqd_ = mq_open(path_.c_str(), flag, 0660, &attr);
     if (mqd_ == -1) {
         perror("MessageQueue::open (mq_open)");
@@ -63,7 +63,11 @@ bool MessageQueue::close() {
     return true;
 }
 
-bool MessageQueue::await_data() const {
+bool MessageQueue::is_open() const {
+    return mqd_ != -1;
+}
+
+bool MessageQueue::await_data() {
     // Check if message queue is open
     if (mqd_ == -1)
         return false;
