@@ -1,15 +1,19 @@
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
+#include <numeric>
 #include <thread>
 
-#include "../include/datagram_socket.hpp"
-#include "../include/fifo.hpp"
-#include "../include/message_queue.hpp"
-#include "../include/stream_socket.hpp"
-#include "../include/dbus.hpp"
-#include "../include/shared_memory.hpp"
-#include "../include/shared_file.hpp"
+#include "benchmark/latency.hpp"
+#include "datagram_socket.hpp"
+#include "dbus.hpp"
+#include "fifo.hpp"
+#include "message_queue.hpp"
+#include "shared_file.hpp"
+#include "shared_memory.hpp"
+#include "stream_socket.hpp"
+#include "utility.hpp"
 
 // helper type for the visitor
 template<class... Ts>
@@ -60,6 +64,7 @@ std::shared_ptr<ipc::ICommunicationHandler> create_handler(const std::string &ty
 void run_client(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
     int i = 1;
     while (!stop && handler->is_open()) {
+        const auto ts = ipc::get_timestamp();
         ipc::JavaSymbol data(
                 static_cast<std::int64_t>(rand()) << 32 | rand(),
                 rand(),
@@ -71,7 +76,7 @@ void run_client(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
             std::cout << "Error while writing data" << std::endl;
         }
 
-        std::cout << "JavaSymbol" << data << " - " << i << std::endl;
+        std::cout << ts << " JavaSymbol" << data << " - " << i << std::endl;
         i++;
 
         std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 2));
@@ -123,8 +128,8 @@ void run_server(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
                     }, data);
                     i++;
 
-                    if (i % 25 == 0)
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    //if (i % 25 == 0)
+                    //    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
         }, result);
     }
@@ -148,6 +153,41 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Loading handler... (" << type << ')' << std::endl;
 
+#if 1
+    constexpr auto iterations = 1000;
+    ipc::benchmark::LatencyBenchmark bench(iterations, 10, readonly);
+    if (!bench.setup(*handler))
+        return EXIT_FAILURE;
+
+    std::cout << "Running benchmark..." << std::endl;
+    const auto success = bench.run(*handler);
+    std::cout << "Benchmark completed!" << std::endl;
+
+    bench.cleanup(*handler);
+
+    if (!success)
+        return EXIT_FAILURE;
+
+    if (readonly) {
+        const auto res = bench.get_results();
+        const auto count = res.size();
+        const auto [min, max] = std::minmax_element(res.begin(), res.end());
+        const auto sum = std::reduce(res.begin(), res.end());
+        const auto avg = static_cast<double>(sum) / static_cast<double>(count);
+
+        std::cout << "It:  " << count << std::endl
+                  << "Min: " << *min / 1000.0 << "us" << std::endl
+                  << "Max: " << *max / 1000.0 << "us" << std::endl
+                  << "Avg: " << avg / 1000.0 << "us" << std::endl;
+
+#if 0
+        std::cout << "Data: ";
+        for (auto &i: bench.get_results())
+            std::cout << i << ' ';
+        std::cout << std::endl;
+#endif
+    }
+#else
     const auto res = handler->open();
     if (!res) {
         std::cout << "Error opening handler" << std::endl;
@@ -171,6 +211,7 @@ int main(int argc, char *argv[]) {
 
     handler->close();
     std::cout << "Handler closed" << std::endl;
+#endif
 
     return EXIT_SUCCESS;
 }

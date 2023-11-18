@@ -16,8 +16,10 @@ include_directories("/usr/include/dbus-1.0")
 include_directories("/usr/lib/x86_64-linux-gnu/dbus-1.0/include")
 link_libraries("dbus-1")
 
-# Project files .hpp + .cpp
-include_directories(include)
-file(GLOB SOURCES "src/*.cpp")
+# Project files .cpp
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 
 add_executable(ipc ${SOURCES})
+
+# Project files .hpp
+target_include_directories(ipc PRIVATE include)

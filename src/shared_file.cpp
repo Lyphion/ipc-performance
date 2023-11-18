@@ -1,6 +1,7 @@
 #include "shared_file.hpp"
 
 #include <cassert>
+#include <thread>
 
 extern "C" {
 #include <fcntl.h>
@@ -141,6 +142,8 @@ bool SharedFile::write(const IDataObject &obj) {
     if (!file_.is_open())
         return false;
 
+    const auto timestamp = get_timestamp();
+
     // Wait until file is available
     const auto res = sem_wait(writer_);
     if (res == -1) {
@@ -156,30 +159,20 @@ bool SharedFile::write(const IDataObject &obj) {
     }
 
     last_id_++;
-    const auto timestamp = get_timestamp();
     DataHeader header(last_id_, obj.get_type(), size, timestamp);
 
     // Serialize header
     header.serialize(buffer_.data(), header_size);
 
+    // Clear error bits
     file_.clear();
 
     // Move write pointer to correct location
-    long pos = file_.tellp();
+    file_.seekp(offset_ * BUFFER_SIZE, std::ios::beg);
     if (file_.fail()) {
-        perror("SharedFile::write (tellp)");
-        sem_post(reader_);
+        perror("SharedFile::write (seekp)");
+        sem_post(writer_);
         return false;
-    }
-
-    if (pos != offset_ * BUFFER_SIZE) {
-        file_.seekp(offset_ * BUFFER_SIZE, std::ios::beg);
-
-        if (file_.fail()) {
-            perror("SharedFile::write (seekp)");
-            sem_post(reader_);
-            return false;
-        }
     }
 
     // Write data
@@ -187,7 +180,7 @@ bool SharedFile::write(const IDataObject &obj) {
     file_.write(data, static_cast<long>(header_size) + size);
     if (file_.fail()) {
         perror("SharedFile::write (write)");
-        sem_post(reader_);
+        sem_post(writer_);
         return false;
     }
 
@@ -216,24 +209,15 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedFile:
         return CommunicationError::READ_ERROR;
     }
 
+    // Clear error bits
     file_.clear();
 
     // Move read pointer to correct location
-    long pos = file_.tellg();
+    file_.seekg(offset_ * BUFFER_SIZE, std::ios::beg);
     if (file_.fail()) {
-        perror("SharedFile::read (tellg)");
-        sem_post(writer_);
+        perror("SharedFile::read (seekg)");
+        sem_post(reader_);
         return CommunicationError::READ_ERROR;
-    }
-
-    if (pos != offset_ * BUFFER_SIZE) {
-        file_.seekg(offset_ * BUFFER_SIZE, std::ios::beg);
-
-        if (file_.fail()) {
-            perror("SharedFile::read (seekg)");
-            sem_post(writer_);
-            return CommunicationError::READ_ERROR;
-        }
     }
 
     // Read data
@@ -241,7 +225,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedFile:
     file_.read(data, BUFFER_SIZE);
     if (file_.fail() && !file_.eof()) {
         perror("SharedFile::read (read)");
-        sem_post(writer_);
+        sem_post(reader_);
         return CommunicationError::READ_ERROR;
     }
 

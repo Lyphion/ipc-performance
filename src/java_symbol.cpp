@@ -1,4 +1,4 @@
-#include "../include/java_symbol.hpp"
+#include "java_symbol.hpp"
 
 #include <cstring>
 #include <iomanip>

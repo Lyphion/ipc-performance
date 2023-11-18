@@ -1,4 +1,4 @@
-#include "../include/fifo.hpp"
+#include "fifo.hpp"
 
 #include <cassert>
 
@@ -8,7 +8,7 @@ extern "C" {
 #include <unistd.h>
 }
 
-#include "../include/utility.hpp"
+#include "utility.hpp"
 
 namespace ipc {
 

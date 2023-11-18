@@ -5,8 +5,8 @@
 #include <variant>
 
 #include "communication_error.hpp"
-#include "data_object.hpp"
 #include "data_header.hpp"
+#include "data_object.hpp"
 #include "java_symbol.hpp"
 #include "ping.hpp"
 
