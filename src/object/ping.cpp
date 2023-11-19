@@ -1,4 +1,4 @@
-#include "ping.hpp"
+#include "object/ping.hpp"
 
 namespace ipc {
 

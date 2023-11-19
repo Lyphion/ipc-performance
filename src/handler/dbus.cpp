@@ -1,4 +1,4 @@
-#include "dbus.hpp"
+#include "handler/dbus.hpp"
 
 #include "utility.hpp"
 
@@ -53,7 +53,6 @@ bool DBus::create_server() {
         dbus_error_free(&err);
     }
 
-    dbus_connection_flush(con_);
     return ret == DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER;
 }
 
@@ -80,11 +79,13 @@ bool DBus::close() {
     if (con_ == nullptr)
         return false;
 
-    DBusError err;
-    dbus_error_init(&err);
-
-    if (server_)
+    if (server_) {
+        DBusError err;
+        dbus_error_init(&err);
         dbus_bus_release_name(con_, name_.c_str(), &err);
+    } else {
+        dbus_connection_flush(con_);
+    }
 
     con_ = nullptr;
 
@@ -105,14 +106,8 @@ bool DBus::await_data() {
     if (res == 0)
         return false;
 
-    // Check if a message is available
-    const auto msg = dbus_connection_borrow_message(con_);
-    if (msg == nullptr)
-        return false;
-
-    // Return borrowed message
-    dbus_connection_return_message(con_, msg);
-    return true;
+    const auto status = dbus_connection_get_dispatch_status(con_);
+    return status == DBUS_DISPATCH_DATA_REMAINS;
 }
 
 bool DBus::has_data() const {
@@ -125,14 +120,8 @@ bool DBus::has_data() const {
     if (res == 0)
         return false;
 
-    // Check if a message is available
-    const auto msg = dbus_connection_borrow_message(con_);
-    if (msg == nullptr)
-        return false;
-
-    // Return borrowed message
-    dbus_connection_return_message(con_, msg);
-    return true;
+    const auto status = dbus_connection_get_dispatch_status(con_);
+    return status == DBUS_DISPATCH_DATA_REMAINS;
 }
 
 bool DBus::write(const IDataObject &obj) {

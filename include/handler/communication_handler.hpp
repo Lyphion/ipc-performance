@@ -5,15 +5,16 @@
 #include <variant>
 
 #include "communication_error.hpp"
-#include "data_header.hpp"
-#include "data_object.hpp"
-#include "java_symbol.hpp"
-#include "ping.hpp"
+#include "object/data_header.hpp"
+#include "object/data_object.hpp"
+#include "object/java_symbol.hpp"
+#include "object/ping.hpp"
+#include "object/binary_data.hpp"
 
 namespace ipc {
 
 /// Variant for all data types
-using DataObject = std::variant<Ping, JavaSymbol>;
+using DataObject = std::variant<Ping, JavaSymbol, BinaryData>;
 
 /**
  * Interface for all inter-process communication handlers.

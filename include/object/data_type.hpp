@@ -16,6 +16,9 @@ enum class DataType : std::uint16_t {
 
     /// Type for Java Symbols (ipc::JavaSymbol)
     JAVA_SYMBOL_LOOKUP = 2,
+
+    /// Type for Binary Data (ipc::BinaryData)
+    BINARY_DATA = 3,
 };
 
 }

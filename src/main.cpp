@@ -6,23 +6,16 @@
 #include <thread>
 
 #include "benchmark/latency.hpp"
-#include "datagram_socket.hpp"
-#include "dbus.hpp"
-#include "fifo.hpp"
-#include "message_queue.hpp"
-#include "shared_file.hpp"
-#include "shared_memory.hpp"
-#include "stream_socket.hpp"
+#include "benchmark/throughput.hpp"
+#include "handler/datagram_socket.hpp"
+#include "handler/dbus.hpp"
+#include "handler/fifo.hpp"
+#include "handler/message_queue.hpp"
+#include "handler/shared_file.hpp"
+#include "handler/shared_memory.hpp"
+#include "handler/stream_socket.hpp"
+#include "object/binary_data.hpp"
 #include "utility.hpp"
-
-// helper type for the visitor
-template<class... Ts>
-struct overloaded : Ts ... {
-    using Ts::operator()...;
-};
-// explicit deduction guide (not needed as of C++20)
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
 
 static volatile bool stop = false;
 
@@ -124,6 +117,9 @@ void run_server(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
                             },
                             [](const ipc::Ping &ping) {
                                 std::cout << "Ping" << ping << std::endl;
+                            },
+                            [](const ipc::BinaryData &binary) {
+                                std::cout << "BinaryData" << binary << std::endl;
                             }
                     }, data);
                     i++;
@@ -135,35 +131,17 @@ void run_server(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    if (argc < 4) {
-        std::cout << "Missing arguments" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    const std::string type(argv[1]);
-    const std::string path(argv[2]);
-    const auto readonly = strcmp(argv[3], "reader") == 0;
-
-    auto handler = create_handler(type, path, readonly);
-    if (!handler) {
-        std::cout << "Invalid parameter" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    std::cout << "Loading handler... (" << type << ')' << std::endl;
-
-#if 1
+int run_latency(ipc::ICommunicationHandler &handler, bool readonly) {
     constexpr auto iterations = 1000;
     ipc::benchmark::LatencyBenchmark bench(iterations, 10, readonly);
-    if (!bench.setup(*handler))
+    if (!bench.setup(handler))
         return EXIT_FAILURE;
 
-    std::cout << "Running benchmark..." << std::endl;
-    const auto success = bench.run(*handler);
+    std::cout << "Running Latency benchmark..." << std::endl;
+    const auto success = bench.run(handler);
     std::cout << "Benchmark completed!" << std::endl;
 
-    bench.cleanup(*handler);
+    bench.cleanup(handler);
 
     if (!success)
         return EXIT_FAILURE;
@@ -187,6 +165,63 @@ int main(int argc, char *argv[]) {
         std::cout << std::endl;
 #endif
     }
+
+    return EXIT_SUCCESS;
+}
+
+int run_throughput(ipc::ICommunicationHandler &handler, bool readonly) {
+    constexpr auto iterations = 1'000'000;
+    ipc::benchmark::ThroughputBenchmark bench(iterations, 512 - sizeof(ipc::DataHeader), readonly);
+    if (!bench.setup(handler))
+        return EXIT_FAILURE;
+
+    std::cout << "Running Throughput benchmark..." << std::endl;
+    const auto success = bench.run(handler);
+    std::cout << "Benchmark completed!" << std::endl;
+
+    bench.cleanup(handler);
+
+    if (!success)
+        return EXIT_FAILURE;
+
+    if (readonly) {
+        const auto count = bench.get_iterations();
+        const auto received = bench.get_received();
+        const auto size = bench.get_size();
+        const auto total_time = bench.get_total_time();
+        const auto throughput = bench.get_throughput();
+
+        std::cout << "It:   " << count << std::endl
+                  << "Size: " << size << " Byte (" << size + sizeof(ipc::DataHeader) << " Byte)" << std::endl
+                  << "Miss: " << count - received << std::endl
+                  << "Time: " << total_time << "ms" << std::endl
+                  << "Data: " << throughput << "KiB/s" << std::endl;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 4) {
+        std::cout << "Missing arguments" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    const std::string type(argv[1]);
+    const std::string path(argv[2]);
+    const auto readonly = strcmp(argv[3], "reader") == 0;
+
+    auto handler = create_handler(type, path, readonly);
+    if (!handler) {
+        std::cout << "Invalid parameter" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    std::cout << "Loading handler... (" << type << ')' << std::endl;
+
+#if 1
+    // return run_latency(*handler, readonly);
+    return run_throughput(*handler, readonly);
 #else
     const auto res = handler->open();
     if (!res) {

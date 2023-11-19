@@ -1,4 +1,4 @@
-#include "stream_socket.hpp"
+#include "handler/stream_socket.hpp"
 
 #include <cassert>
 
@@ -280,19 +280,22 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> StreamSocke
 
     const auto header = *optional;
 
-    result = recv(cfd_, buffer_.data(), header.get_body_size(), 0);
-    if (result == -1) {
-        if (errno == EAGAIN)
-            return CommunicationError::NO_DATA_AVAILABLE;
+    unsigned int amount = 0;
+    do {
+        result = recv(cfd_, &buffer_[amount], header.get_body_size() - amount, 0);
+        if (result == -1) {
+            if (errno == EAGAIN)
+                continue;
 
-        perror("StreamSocket::read (recv)");
-        return CommunicationError::READ_ERROR;
-    }
+            perror("StreamSocket::read (recv)");
+            return CommunicationError::READ_ERROR;
+        }
 
-    if (result == 0)
-        return CommunicationError::CONNECTION_CLOSED;
+        if (result == 0)
+            return CommunicationError::CONNECTION_CLOSED;
 
-    assert(header.get_body_size() == result);
+        amount += result;
+    } while (amount < header.get_body_size());
 
     const auto body = deserialize_data_object(header.get_type(), buffer_.data(), header.get_body_size());
 

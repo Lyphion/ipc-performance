@@ -1,6 +1,6 @@
 #pragma once
 
-#include "communication_handler.hpp"
+#include "handler/communication_handler.hpp"
 
 namespace ipc::benchmark {
 

@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "benchmark/benchmark.hpp"
-#include "communication_handler.hpp"
+#include "handler/communication_handler.hpp"
 
 namespace ipc::benchmark {
 
@@ -33,6 +33,16 @@ public:
      * @remarks Only valid if benchmark completed successfully.
      */
     const std::vector<unsigned int> &get_results() { return latencies_; }
+
+    /**
+     * Amount if iterations.
+     */
+    unsigned int get_iterations() const { return iterations_; }
+
+    /**
+     * Delay between write operations.
+     */
+    unsigned int get_delay() const { return delay_; }
 
 private:
     /**

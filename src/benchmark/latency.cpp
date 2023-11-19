@@ -8,15 +8,6 @@
 
 namespace ipc::benchmark {
 
-// helper type for the visitor
-template<class... Ts>
-struct overloaded : Ts ... {
-    using Ts::operator()...;
-};
-// explicit deduction guide (not needed as of C++20)
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-
 LatencyBenchmark::LatencyBenchmark(unsigned int iterations, unsigned int delay, bool server)
         : iterations_(iterations), delay_(delay), server_(server) {}
 
@@ -39,7 +30,6 @@ bool LatencyBenchmark::run_server(ICommunicationHandler &handler) {
 
         // Read messages
         const auto result = handler.read();
-
         more_data = !std::holds_alternative<ipc::CommunicationError>(result);
 
         // Handle result
@@ -54,7 +44,7 @@ bool LatencyBenchmark::run_server(ICommunicationHandler &handler) {
                     return false;
                 },
                 [this, &i](const auto &success) {
-                    const auto header = std::get<DataHeader>(success);
+                    const DataHeader header = std::get<DataHeader>(success);
                     const auto ts = ipc::get_timestamp();
 
                     // Compute latency from creation to now
@@ -74,7 +64,7 @@ bool LatencyBenchmark::run_server(ICommunicationHandler &handler) {
 }
 
 bool LatencyBenchmark::run_client(ICommunicationHandler &handler) const {
-    const auto data = Ping();
+    const Ping data{};
     const auto delay = std::chrono::milliseconds(delay_);
 
     for (unsigned int i = 1; i <= iterations_; ++i) {

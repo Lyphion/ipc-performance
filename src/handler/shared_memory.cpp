@@ -1,59 +1,100 @@
-#include "shared_file.hpp"
+#include "handler/shared_memory.hpp"
 
+#include <cstring>
 #include <cassert>
-#include <thread>
 
 extern "C" {
 #include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 }
 
 #include "utility.hpp"
 
 namespace ipc {
 
-SharedFile::SharedFile(std::string path, bool server)
-        : path_(std::move(path)), server_(server) {}
+SharedMemory::SharedMemory(std::string name, bool server, bool file)
+        : name_(std::move(name)), server_(server), file_(file) {}
 
-SharedFile::~SharedFile() {
-    if (file_.is_open()) {
-        SharedFile::close();
+SharedMemory::~SharedMemory() {
+    if (fd_ != -1) {
+        SharedMemory::close();
     }
 }
 
-bool SharedFile::open() {
-    // Check if file is already open
-    if (file_.is_open())
+bool SharedMemory::open() {
+    // Check if memory is already open
+    if (fd_ != -1)
         return true;
 
-    if (server_) {
-        file_ = std::fstream(path_, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+    if (file_) {
+        if (server_) {
+            // Create memory
+            remove(name_.c_str());
+            fd_ = ::open(name_.c_str(), O_RDWR | O_CREAT, 0660);
+        } else {
+            // Open memory
+            fd_ = ::open(name_.c_str(), O_RDWR);
+        }
+
+        if (fd_ == -1) {
+            perror("SharedMemory::open (open)");
+            return false;
+        }
     } else {
-        file_ = std::fstream(path_, std::ios::in | std::ios::out | std::ios::binary);
+        if (server_) {
+            // Create memory
+            shm_unlink(name_.c_str());
+            fd_ = shm_open(name_.c_str(), O_RDWR | O_CREAT, 0660);
+        } else {
+            // Open memory
+            fd_ = shm_open(name_.c_str(), O_RDWR, 0660);
+        }
+
+        if (fd_ == -1) {
+            perror("SharedMemory::open (shm_open)");
+            return false;
+        }
     }
 
-    if (!file_.is_open()) {
-        perror("SharedFile::open (fstream)");
+    if (server_) {
+        // Resize memory
+        if (ftruncate(fd_, TOTAL_SIZE) == -1) {
+            perror("SharedMemory::open (ftruncate)");
+            close();
+            return false;
+        }
+    }
+
+    // Allocate memory
+    auto addr = mmap(nullptr, TOTAL_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
+    if (addr == MAP_FAILED) {
+        perror("SharedMemory::open (mmap)");
+        close();
         return false;
     }
 
-    std::string prefix(path_.substr(path_.rfind('/') + 1) + "_sem");
+    address_ = static_cast<std::byte *>(addr);
+
+    std::string prefix(name_.substr(name_.rfind('/') + 1) + "_sem");
 
     if (server_) {
         sem_unlink((prefix + "r").c_str());
         sem_unlink((prefix + "w").c_str());
     }
 
-    const auto flag = server_ ? O_CREAT : 0;
+    auto flag = server_ ? O_CREAT : 0;
     reader_ = sem_open((prefix + "r").c_str(), flag, 0660, 0);
     if (reader_ == SEM_FAILED) {
-        perror("SharedFile::open (sem_open)");
+        perror("SharedMemory::open (sem_open)");
         close();
         return false;
     }
 
     writer_ = sem_open((prefix + "w").c_str(), flag, 0660, TOTAL_AMOUNT);
     if (writer_ == SEM_FAILED) {
-        perror("SharedFile::open (sem_open)");
+        perror("SharedMemory::open (sem_open)");
         close();
         return false;
     }
@@ -61,20 +102,28 @@ bool SharedFile::open() {
     return true;
 }
 
-bool SharedFile::close() {
-    // Check if file is already closed
-    if (!file_.is_open())
+bool SharedMemory::close() {
+    // Check if memory is already closed
+    if (fd_ == -1)
         return false;
 
-    file_.close();
+    munmap(address_, TOTAL_SIZE);
+    address_ = nullptr;
+
+    ::close(fd_);
+    fd_ = -1;
 
     sem_close(reader_);
     sem_close(writer_);
 
     if (server_) {
-        remove(path_.c_str());
+        if (file_) {
+            remove(name_.c_str());
+        } else {
+            shm_unlink(name_.c_str());
+        }
 
-        std::string prefix(path_.substr(path_.rfind('/') + 1) + "_sem");
+        std::string prefix(name_.substr(name_.rfind('/') + 1) + "_sem");
         sem_unlink((prefix + "r").c_str());
         sem_unlink((prefix + "w").c_str());
     }
@@ -82,18 +131,18 @@ bool SharedFile::close() {
     return true;
 }
 
-bool SharedFile::is_open() const {
-    return file_.is_open();
+bool SharedMemory::is_open() const {
+    return fd_ != -1;
 }
 
-bool SharedFile::await_data() {
-    // Check if file is already closed
-    if (!file_.is_open())
+bool SharedMemory::await_data() {
+    // Check if memory is already closed
+    if (fd_ == -1)
         return false;
 
 #if WAIT_TIME == -1
     // Wait for data
-    const auto res = sem_wait(reader_);
+    int res = sem_wait(reader_);
 
     if (res == -1) {
         perror("SharedMemory::await_data (sem_wait)");
@@ -106,7 +155,7 @@ bool SharedFile::await_data() {
 
     wait_time.tv_sec += WAIT_TIME / 1000;
     // Wait for data
-    const auto res = sem_timedwait(reader_, &wait_time);
+    int res = sem_timedwait(reader_, &wait_time);
 
     if (res == -1) {
         if (errno != ETIMEDOUT)
@@ -121,33 +170,33 @@ bool SharedFile::await_data() {
     return true;
 }
 
-bool SharedFile::has_data() const {
-    // Check if file is already closed
-    if (!file_.is_open())
+bool SharedMemory::has_data() const {
+    // Check if memory is already closed
+    if (fd_ == -1)
         return false;
 
     // Check if data is available
     int value;
     const auto res = sem_getvalue(reader_, &value);
     if (res == -1)
-        perror("SharedFile::has_data (sem_getvalue)");
+        perror("SharedMemory::has_data (sem_getvalue)");
 
     return res != -1 && value > 0;
 }
 
-bool SharedFile::write(const IDataObject &obj) {
+bool SharedMemory::write(const IDataObject &obj) {
     constexpr auto header_size = sizeof(DataHeader);
 
-    // Check if file is already closed
-    if (!file_.is_open())
+    // Check if memory is already closed
+    if (fd_ == -1)
         return false;
 
     const auto timestamp = get_timestamp();
 
-    // Wait until file is available
+    // Wait until memory is available
     const auto res = sem_wait(writer_);
     if (res == -1) {
-        perror("SharedFile::write (sem_wait)");
+        perror("SharedMemory::write (sem_wait)");
         return false;
     }
 
@@ -164,38 +213,19 @@ bool SharedFile::write(const IDataObject &obj) {
     // Serialize header
     header.serialize(buffer_.data(), header_size);
 
-    // Clear error bits
-    file_.clear();
-
-    // Move write pointer to correct location
-    file_.seekp(offset_ * BUFFER_SIZE, std::ios::beg);
-    if (file_.fail()) {
-        perror("SharedFile::write (seekp)");
-        sem_post(writer_);
-        return false;
-    }
-
-    // Write data
-    const auto data = reinterpret_cast<const char *>(buffer_.data());
-    file_.write(data, static_cast<long>(header_size) + size);
-    if (file_.fail()) {
-        perror("SharedFile::write (write)");
-        sem_post(writer_);
-        return false;
-    }
-
-    file_.flush();
+    // Copy data to memory
+    std::memcpy(&address_[offset_ * BUFFER_SIZE], buffer_.data(), header_size + size);
     offset_ = (offset_ + 1) % TOTAL_AMOUNT;
 
     sem_post(reader_);
     return true;
 }
 
-std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedFile::read() {
+std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedMemory::read() {
     constexpr auto header_size = sizeof(DataHeader);
 
-    // Check if file is open
-    if (!file_.is_open())
+    // Check if memory is open
+    if (fd_ == -1)
         return CommunicationError::CONNECTION_CLOSED;
 
     // Wait and check if data is still available
@@ -205,30 +235,12 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedFile:
             return CommunicationError::NO_DATA_AVAILABLE;
         }
 
-        perror("SharedFile::read (sem_trywait)");
+        perror("SharedMemory::read (sem_trywait)");
         return CommunicationError::READ_ERROR;
     }
 
-    // Clear error bits
-    file_.clear();
-
-    // Move read pointer to correct location
-    file_.seekg(offset_ * BUFFER_SIZE, std::ios::beg);
-    if (file_.fail()) {
-        perror("SharedFile::read (seekg)");
-        sem_post(reader_);
-        return CommunicationError::READ_ERROR;
-    }
-
-    // Read data
-    const auto data = reinterpret_cast<char *>(buffer_.data());
-    file_.read(data, BUFFER_SIZE);
-    if (file_.fail() && !file_.eof()) {
-        perror("SharedFile::read (read)");
-        sem_post(reader_);
-        return CommunicationError::READ_ERROR;
-    }
-
+    // Copy data from memory
+    std::memcpy(buffer_.data(), &address_[offset_ * BUFFER_SIZE], BUFFER_SIZE);
     offset_ = (offset_ + 1) % TOTAL_AMOUNT;
     sem_post(writer_);
 
@@ -249,5 +261,6 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedFile:
         return std::get<CommunicationError>(body);
     }
 }
+
 
 }
