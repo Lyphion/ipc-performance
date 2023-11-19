@@ -5,6 +5,7 @@
 #include <numeric>
 #include <thread>
 
+#include "benchmark/execution.hpp"
 #include "benchmark/latency.hpp"
 #include "benchmark/throughput.hpp"
 #include "handler/datagram_socket.hpp"
@@ -201,6 +202,44 @@ int run_throughput(ipc::ICommunicationHandler &handler, bool readonly) {
     return EXIT_SUCCESS;
 }
 
+int run_execution_time(ipc::ICommunicationHandler &handler, bool readonly) {
+    constexpr auto iterations = 1000;
+    ipc::benchmark::ExecutionTimeBenchmark bench(iterations, 512 - sizeof(ipc::DataHeader), 10, readonly);
+    if (!bench.setup(handler))
+        return EXIT_FAILURE;
+
+    std::cout << "Running Execution Time benchmark..." << std::endl;
+    const auto success = bench.run(handler);
+    std::cout << "Benchmark completed!" << std::endl;
+
+    bench.cleanup(handler);
+
+    if (!success)
+        return EXIT_FAILURE;
+
+    const auto res = bench.get_results();
+    const auto count = res.size();
+    const auto size = bench.get_size();
+    const auto [min, max] = std::minmax_element(res.begin(), res.end());
+    const auto sum = std::reduce(res.begin(), res.end());
+    const auto avg = static_cast<double>(sum) / static_cast<double>(count);
+
+    std::cout << "It:   " << count << std::endl
+              << "Size: " << size << " Byte (" << size + sizeof(ipc::DataHeader) << " Byte)" << std::endl
+              << "Min:  " << *min / 1000.0 << "us" << std::endl
+              << "Max:  " << *max / 1000.0 << "us" << std::endl
+              << "Avg:  " << avg / 1000.0 << "us" << std::endl;
+
+#if 0
+    std::cout << "Data: ";
+    for (auto &i: bench.get_results())
+        std::cout << i << ' ';
+    std::cout << std::endl;
+#endif
+
+    return EXIT_SUCCESS;
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 4) {
         std::cout << "Missing arguments" << std::endl;
@@ -221,7 +260,8 @@ int main(int argc, char *argv[]) {
 
 #if 1
     // return run_latency(*handler, readonly);
-    return run_throughput(*handler, readonly);
+    // return run_throughput(*handler, readonly);
+    return run_execution_time(*handler, readonly);
 #else
     const auto res = handler->open();
     if (!res) {
@@ -246,7 +286,7 @@ int main(int argc, char *argv[]) {
 
     handler->close();
     std::cout << "Handler closed" << std::endl;
-#endif
 
     return EXIT_SUCCESS;
+#endif
 }
