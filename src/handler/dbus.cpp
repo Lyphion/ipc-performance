@@ -87,6 +87,7 @@ bool DBus::close() {
         dbus_connection_flush(con_);
     }
 
+    dbus_connection_unref(con_);
     con_ = nullptr;
 
     return true;
@@ -141,6 +142,9 @@ bool DBus::write(const IDataObject &obj) {
 
     if (msg == nullptr)
         return false;
+
+    // We don't expect a response
+    dbus_message_set_no_reply(msg, true);
 
     // Serialize body
     const auto size = obj.serialize(buffer_.data(), BUFFER_SIZE);

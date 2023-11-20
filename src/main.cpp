@@ -260,8 +260,8 @@ int main(int argc, char *argv[]) {
 
 #if 1
     // return run_latency(*handler, readonly);
-    // return run_throughput(*handler, readonly);
-    return run_execution_time(*handler, readonly);
+    return run_throughput(*handler, readonly);
+    // return run_execution_time(*handler, readonly);
 #else
     const auto res = handler->open();
     if (!res) {
