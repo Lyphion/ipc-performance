@@ -1,4 +1,4 @@
-#include "../include/utility.hpp"
+#include "utility.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -59,6 +59,16 @@ std::variant<DataObject, CommunicationError> deserialize_data_object(DataType ty
                 return CommunicationError::INVALID_DATA;
 
             return *data;
+        }
+
+        case DataType::BINARY_DATA: {
+            // Deserialize Binary data
+            const auto data = BinaryData::deserialize(buffer, size);
+            if (!data)
+                return CommunicationError::INVALID_DATA;
+
+            return *data;
+
         }
     }
 

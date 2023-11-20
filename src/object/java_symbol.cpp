@@ -1,4 +1,4 @@
-#include "../include/java_symbol.hpp"
+#include "object/java_symbol.hpp"
 
 #include <cstring>
 #include <iomanip>
@@ -40,12 +40,12 @@ std::optional<JavaSymbol> JavaSymbol::deserialize(const std::byte *buffer, unsig
                                  + sizeof(JavaSymbol::length_) + sizeof(std::uint32_t);
     static_assert(header_size == 16, "Size should match");
 
-    std::uint64_t address;
-    std::uint32_t length, symbol_length;
-
     // Not enough space in buffer
     if (size < header_size)
         return std::nullopt;
+
+    std::uint64_t address;
+    std::uint32_t length, symbol_length;
 
     auto offset = 0;
     std::memcpy(&address, &buffer[offset], sizeof(address));

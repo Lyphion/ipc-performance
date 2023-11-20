@@ -24,8 +24,8 @@ def main():
         for i in range(len(areas) - 1, -1, -1):
             old = areas[i]
             if overlaps(add, old):
-                print("Overlap:", add, "replaced", old)
                 count += 1
+                print(f"Overlap {count:4d}:", add, "replaced", old)
                 del areas[i]
 
         areas.append(add)

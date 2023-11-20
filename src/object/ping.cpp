@@ -1,9 +1,9 @@
-#include "../include/ping.hpp"
+#include "object/ping.hpp"
 
 namespace ipc {
 
 int Ping::serialize(std::byte *, unsigned int) const {
-    return true;
+    return 0;
 }
 
 std::optional<Ping> Ping::deserialize(const std::byte *, unsigned int) {

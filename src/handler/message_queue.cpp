@@ -1,4 +1,4 @@
-#include "../include/message_queue.hpp"
+#include "handler/message_queue.hpp"
 
 #include <cassert>
 
@@ -8,7 +8,7 @@ extern "C" {
 #include <sys/stat.h>
 }
 
-#include "../include/utility.hpp"
+#include "utility.hpp"
 
 namespace ipc {
 

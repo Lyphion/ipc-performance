@@ -1,4 +1,4 @@
-#include "../include/dbus.hpp"
+#include "handler/dbus.hpp"
 
 #include "utility.hpp"
 
@@ -43,9 +43,8 @@ bool DBus::create_server() {
         dbus_error_free(&err);
     }
 
-    if (con_ == nullptr) {
+    if (con_ == nullptr)
         return false;
-    }
 
     // request our name on the bus and check for errors
     const auto ret = dbus_bus_request_name(con_, name_.c_str(), DBUS_NAME_FLAG_REPLACE_EXISTING, &err);
@@ -54,11 +53,7 @@ bool DBus::create_server() {
         dbus_error_free(&err);
     }
 
-    if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-        return false;
-    }
-
-    return true;
+    return ret == DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER;
 }
 
 bool DBus::create_client() {
@@ -84,12 +79,15 @@ bool DBus::close() {
     if (con_ == nullptr)
         return false;
 
-    DBusError err;
-    dbus_error_init(&err);
-
-    if (server_)
+    if (server_) {
+        DBusError err;
+        dbus_error_init(&err);
         dbus_bus_release_name(con_, name_.c_str(), &err);
+    } else {
+        dbus_connection_flush(con_);
+    }
 
+    dbus_connection_unref(con_);
     con_ = nullptr;
 
     return true;
@@ -106,7 +104,11 @@ bool DBus::await_data() {
 
     // Poll events and block until one is available
     const auto res = dbus_connection_read_write(con_, WAIT_TIME);
-    return res != 0;
+    if (res == 0)
+        return false;
+
+    const auto status = dbus_connection_get_dispatch_status(con_);
+    return status == DBUS_DISPATCH_DATA_REMAINS;
 }
 
 bool DBus::has_data() const {
@@ -116,7 +118,11 @@ bool DBus::has_data() const {
 
     // Poll events and block for 1ms
     const auto res = dbus_connection_read_write(con_, 1);
-    return res != 0;
+    if (res == 0)
+        return false;
+
+    const auto status = dbus_connection_get_dispatch_status(con_);
+    return status == DBUS_DISPATCH_DATA_REMAINS;
 }
 
 bool DBus::write(const IDataObject &obj) {
@@ -136,6 +142,9 @@ bool DBus::write(const IDataObject &obj) {
 
     if (msg == nullptr)
         return false;
+
+    // We don't expect a response
+    dbus_message_set_no_reply(msg, true);
 
     // Serialize body
     const auto size = obj.serialize(buffer_.data(), BUFFER_SIZE);
@@ -209,10 +218,10 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> DBus::read(
     if (msg == nullptr)
         return CommunicationError::NO_DATA_AVAILABLE;
 
-    // Check for correct type
+    // Check for correct type, ignore other
     if (!dbus_message_is_method_call(msg, INTERFACE_NAME.c_str(), METHOD_NAME.c_str())) {
         dbus_message_unref(msg);
-        return CommunicationError::INVALID_HEADER;
+        return CommunicationError::NO_DATA_AVAILABLE;
     }
 
     // Prepare read arguments

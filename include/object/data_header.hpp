@@ -2,8 +2,8 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <ostream>
 #include <optional>
+#include <ostream>
 
 #include "data_type.hpp"
 

@@ -1,24 +1,22 @@
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
+#include <numeric>
 #include <thread>
 
-#include "../include/datagram_socket.hpp"
-#include "../include/fifo.hpp"
-#include "../include/message_queue.hpp"
-#include "../include/stream_socket.hpp"
-#include "../include/dbus.hpp"
-#include "../include/shared_memory.hpp"
-#include "../include/shared_file.hpp"
-
-// helper type for the visitor
-template<class... Ts>
-struct overloaded : Ts ... {
-    using Ts::operator()...;
-};
-// explicit deduction guide (not needed as of C++20)
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
+#include "benchmark/execution.hpp"
+#include "benchmark/latency.hpp"
+#include "benchmark/throughput.hpp"
+#include "handler/datagram_socket.hpp"
+#include "handler/dbus.hpp"
+#include "handler/fifo.hpp"
+#include "handler/message_queue.hpp"
+#include "handler/shared_file.hpp"
+#include "handler/shared_memory.hpp"
+#include "handler/stream_socket.hpp"
+#include "object/binary_data.hpp"
+#include "utility.hpp"
 
 static volatile bool stop = false;
 
@@ -60,6 +58,7 @@ std::shared_ptr<ipc::ICommunicationHandler> create_handler(const std::string &ty
 void run_client(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
     int i = 1;
     while (!stop && handler->is_open()) {
+        const auto ts = ipc::get_timestamp();
         ipc::JavaSymbol data(
                 static_cast<std::int64_t>(rand()) << 32 | rand(),
                 rand(),
@@ -71,7 +70,7 @@ void run_client(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
             std::cout << "Error while writing data" << std::endl;
         }
 
-        std::cout << "JavaSymbol" << data << " - " << i << std::endl;
+        std::cout << ts << " JavaSymbol" << data << " - " << i << std::endl;
         i++;
 
         std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 2));
@@ -119,15 +118,126 @@ void run_server(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
                             },
                             [](const ipc::Ping &ping) {
                                 std::cout << "Ping" << ping << std::endl;
+                            },
+                            [](const ipc::BinaryData &binary) {
+                                std::cout << "BinaryData" << binary << std::endl;
                             }
                     }, data);
                     i++;
 
-                    if (i % 25 == 0)
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    //if (i % 25 == 0)
+                    //    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
         }, result);
     }
+}
+
+int run_latency(ipc::ICommunicationHandler &handler, bool readonly) {
+    constexpr auto iterations = 1000;
+    ipc::benchmark::LatencyBenchmark bench(iterations, 10, readonly);
+    if (!bench.setup(handler))
+        return EXIT_FAILURE;
+
+    std::cout << "Running Latency benchmark..." << std::endl;
+    const auto success = bench.run(handler);
+    std::cout << "Benchmark completed!" << std::endl;
+
+    bench.cleanup(handler);
+
+    if (!success)
+        return EXIT_FAILURE;
+
+    if (readonly) {
+        const auto res = bench.get_results();
+        const auto count = res.size();
+        const auto [min, max] = std::minmax_element(res.begin(), res.end());
+        const auto sum = std::reduce(res.begin(), res.end());
+        const auto avg = static_cast<double>(sum) / static_cast<double>(count);
+
+        std::cout << "It:  " << count << std::endl
+                  << "Min: " << *min / 1000.0 << "us" << std::endl
+                  << "Max: " << *max / 1000.0 << "us" << std::endl
+                  << "Avg: " << avg / 1000.0 << "us" << std::endl;
+
+#if 0
+        std::cout << "Data: ";
+        for (auto &i: bench.get_results())
+            std::cout << i << ' ';
+        std::cout << std::endl;
+#endif
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int run_throughput(ipc::ICommunicationHandler &handler, bool readonly) {
+    constexpr auto iterations = 1'000'000;
+    ipc::benchmark::ThroughputBenchmark bench(iterations, 512 - sizeof(ipc::DataHeader), readonly);
+    if (!bench.setup(handler))
+        return EXIT_FAILURE;
+
+    std::cout << "Running Throughput benchmark..." << std::endl;
+    const auto success = bench.run(handler);
+    std::cout << "Benchmark completed!" << std::endl;
+
+    bench.cleanup(handler);
+
+    if (!success)
+        return EXIT_FAILURE;
+
+    if (readonly) {
+        const auto count = bench.get_iterations();
+        const auto received = bench.get_received();
+        const auto size = bench.get_size();
+        const auto total_time = bench.get_total_time();
+        const auto throughput = bench.get_throughput();
+
+        std::cout << "It:   " << count << std::endl
+                  << "Size: " << size << " Byte (" << size + sizeof(ipc::DataHeader) << " Byte)" << std::endl
+                  << "Miss: " << count - received << std::endl
+                  << "Time: " << total_time << "ms" << std::endl
+                  << "Data: " << throughput << "KiB/s" << std::endl;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int run_execution_time(ipc::ICommunicationHandler &handler, bool readonly) {
+    constexpr auto iterations = 1000;
+    ipc::benchmark::ExecutionTimeBenchmark bench(iterations, 512 - sizeof(ipc::DataHeader), 10, readonly);
+    if (!bench.setup(handler))
+        return EXIT_FAILURE;
+
+    std::cout << "Running Execution Time benchmark..." << std::endl;
+    const auto success = bench.run(handler);
+    std::cout << "Benchmark completed!" << std::endl;
+
+    bench.cleanup(handler);
+
+    if (!success)
+        return EXIT_FAILURE;
+
+    const auto res = bench.get_results();
+    const auto count = res.size();
+    const auto size = bench.get_size();
+    const auto [min, max] = std::minmax_element(res.begin(), res.end());
+    const auto sum = std::reduce(res.begin(), res.end());
+    const auto avg = static_cast<double>(sum) / static_cast<double>(count);
+
+    std::cout << "It:   " << count << std::endl
+              << "Size: " << size << " Byte (" << size + sizeof(ipc::DataHeader) << " Byte)" << std::endl
+              << "Min:  " << *min / 1000.0 << "us" << std::endl
+              << "Max:  " << *max / 1000.0 << "us" << std::endl
+              << "Avg:  " << avg / 1000.0 << "us" << std::endl;
+
+#if 0
+    std::cout << "Data: ";
+    for (auto &i: bench.get_results())
+        std::cout << i << ' ';
+    std::cout << std::endl;
+#endif
+
+    return EXIT_SUCCESS;
 }
 
 int main(int argc, char *argv[]) {
@@ -148,6 +258,11 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Loading handler... (" << type << ')' << std::endl;
 
+#if 1
+    // return run_latency(*handler, readonly);
+    return run_throughput(*handler, readonly);
+    // return run_execution_time(*handler, readonly);
+#else
     const auto res = handler->open();
     if (!res) {
         std::cout << "Error opening handler" << std::endl;
@@ -173,4 +288,5 @@ int main(int argc, char *argv[]) {
     std::cout << "Handler closed" << std::endl;
 
     return EXIT_SUCCESS;
+#endif
 }

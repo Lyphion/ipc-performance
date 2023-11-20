@@ -1,4 +1,4 @@
-#include "../include/datagram_socket.hpp"
+#include "handler/datagram_socket.hpp"
 
 #include <cassert>
 
@@ -8,7 +8,7 @@ extern "C" {
 #include <unistd.h>
 }
 
-#include "../include/utility.hpp"
+#include "utility.hpp"
 
 namespace ipc {
 

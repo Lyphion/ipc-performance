@@ -1,4 +1,4 @@
-#include "shared_memory.hpp"
+#include "handler/shared_memory.hpp"
 
 #include <cstring>
 #include <cassert>
@@ -191,6 +191,8 @@ bool SharedMemory::write(const IDataObject &obj) {
     if (fd_ == -1)
         return false;
 
+    const auto timestamp = get_timestamp();
+
     // Wait until memory is available
     const auto res = sem_wait(writer_);
     if (res == -1) {
@@ -206,7 +208,6 @@ bool SharedMemory::write(const IDataObject &obj) {
     }
 
     last_id_++;
-    const auto timestamp = get_timestamp();
     DataHeader header(last_id_, obj.get_type(), size, timestamp);
 
     // Serialize header
