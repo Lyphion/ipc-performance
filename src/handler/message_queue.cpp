@@ -1,6 +1,7 @@
 #include "handler/message_queue.hpp"
 
 #include <cassert>
+#include <utility>
 
 extern "C" {
 #include <fcntl.h>

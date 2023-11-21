@@ -1,8 +1,8 @@
 #include "benchmark/throughput.hpp"
 
 #include <iostream>
-#include <vector>
 #include <thread>
+#include <vector>
 
 #include "object/binary_data.hpp"
 #include "utility.hpp"
@@ -21,12 +21,18 @@ bool ThroughputBenchmark::setup(ICommunicationHandler &handler) {
 }
 
 bool ThroughputBenchmark::run_server(ICommunicationHandler &handler) {
+    constexpr auto max_retries = 10 * 1000 / ICommunicationHandler::WAIT_TIME;
     auto more_data = false;
-    unsigned int last_id = 1;
 
-    while (last_id < iterations_) {
+    while (received_ < iterations_) {
         // Wait for new messages
-        while (!more_data && !handler.await_data());
+        auto retry = 0;
+        while (!more_data && !handler.await_data()) {
+            retry++;
+
+            if (received_ > 0 && retry > max_retries)
+                return true;
+        }
 
         // Read messages
         const auto result = handler.read();
@@ -34,24 +40,22 @@ bool ThroughputBenchmark::run_server(ICommunicationHandler &handler) {
 
         // Handle result
         const auto success = std::visit(overloaded{
-                [&last_id](const ipc::CommunicationError &error) {
+                [this](const ipc::CommunicationError &error) {
                     // 'No data available' is not a real error, so ignore it
                     if (error == ipc::CommunicationError::NO_DATA_AVAILABLE)
                         return true;
 
-                    std::cout << "Error reading data on iteration " << last_id
+                    std::cout << "Error reading data on iteration " << received_
                               << " (Error: " << static_cast<int>(error) << ')' << std::endl;
                     return false;
                 },
-                [this, &last_id](const auto &success) {
+                [this](const auto &success) {
                     const DataHeader header = std::get<DataHeader>(success);
-                    last_id = header.get_id();
-                    received_++;
 
-                    if (last_id == 1)
+                    if (received_ == 1)
                         start_time_ = header.get_timestamp();
-                    else if (last_id == iterations_)
-                        end_time_ = ipc::get_timestamp();
+                    end_time_ = ipc::get_timestamp();
+                    received_++;
 
                     // std::cout << "Data " << received_ << " " << header << std::endl;
 

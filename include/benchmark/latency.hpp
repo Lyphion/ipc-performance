@@ -3,7 +3,6 @@
 #include <vector>
 
 #include "benchmark/benchmark.hpp"
-#include "handler/communication_handler.hpp"
 
 namespace ipc::benchmark {
 

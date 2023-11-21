@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "benchmark.hpp"
 
 namespace ipc::benchmark {

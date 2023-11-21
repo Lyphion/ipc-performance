@@ -1,6 +1,8 @@
-#include <thread>
-#include <iostream>
 #include "benchmark/execution.hpp"
+
+#include <iostream>
+#include <thread>
+
 #include "utility.hpp"
 
 namespace ipc::benchmark {

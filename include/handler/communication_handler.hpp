@@ -1,15 +1,14 @@
 #pragma once
 
-#include <memory>
 #include <tuple>
 #include <variant>
 
 #include "communication_error.hpp"
 #include "object/data_header.hpp"
 #include "object/data_object.hpp"
+#include "object/binary_data.hpp"
 #include "object/java_symbol.hpp"
 #include "object/ping.hpp"
-#include "object/binary_data.hpp"
 
 namespace ipc {
 

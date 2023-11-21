@@ -1,6 +1,7 @@
 #include "handler/datagram_socket.hpp"
 
 #include <cassert>
+#include <utility>
 
 extern "C" {
 #include <arpa/inet.h>
