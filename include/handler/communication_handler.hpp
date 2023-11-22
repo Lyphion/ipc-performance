@@ -21,7 +21,7 @@ using DataObject = std::variant<Ping, JavaSymbol, BinaryData>;
 class ICommunicationHandler {
 public:
     /// Size of the buffer and limit of header and body combined.
-    static constexpr short BUFFER_SIZE = 512;
+    static constexpr short BUFFER_SIZE = 512 + sizeof(DataHeader);
 
     /// Time to wait for each poll in milliseconds.
     static constexpr short WAIT_TIME = 5000;

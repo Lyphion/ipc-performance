@@ -164,9 +164,6 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> Fifo::read(
         return CommunicationError::READ_ERROR;
     }
 
-    if (result == 0)
-        return CommunicationError::NO_DATA_AVAILABLE;
-
     assert(header.get_body_size() == result);
 
     const auto body = deserialize_data_object(header.get_type(), buffer_.data(), header.get_body_size());
