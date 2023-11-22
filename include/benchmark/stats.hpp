@@ -9,9 +9,9 @@ namespace ipc::benchmark {
 
 struct Statistics {
     const double minimum;
-    const double first_quantile;
+    const double first_quartile;
     const double median;
-    const double third_quantile;
+    const double third_quartile;
     const double maximum;
     const double average;
     const double variance;

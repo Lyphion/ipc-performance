@@ -158,10 +158,10 @@ int run_latency(ipc::ICommunicationHandler &handler, unsigned int iterations, un
         std::cout << "Iterations:   " << count << std::endl
                   << "Delay:        " << delay << "ms" << std::endl
                   << "Minimum:      " << stats.minimum / 1000.0 << "us" << std::endl
-                  << "1st Quantile: " << stats.first_quantile / 1000.0 << "us" << std::endl
+                  << "1st Quantile: " << stats.first_quartile / 1000.0 << "us" << std::endl
                   << "Median:       " << stats.median / 1000.0 << "us" << std::endl
                   << "Average:      " << stats.average / 1000.0 << "us" << std::endl
-                  << "3rd Quantile: " << stats.third_quantile / 1000.0 << "us" << std::endl
+                  << "3rd Quantile: " << stats.third_quartile / 1000.0 << "us" << std::endl
                   << "Maximum:      " << stats.maximum / 1000.0 << "us" << std::endl;
 #if 0
         std::cout << "Data: ";
@@ -229,10 +229,10 @@ int run_execution_time(ipc::ICommunicationHandler &handler, unsigned int iterati
               << "Delay:        " << delay << "ms" << std::endl
               << "Size:         " << size << " Byte (" << size + sizeof(ipc::DataHeader) << " Byte)" << std::endl
               << "Minimum:      " << stats.minimum / 1000.0 << "us" << std::endl
-              << "1st Quantile: " << stats.first_quantile / 1000.0 << "us" << std::endl
+              << "1st Quantile: " << stats.first_quartile / 1000.0 << "us" << std::endl
               << "Median:       " << stats.median / 1000.0 << "us" << std::endl
               << "Average:      " << stats.average / 1000.0 << "us" << std::endl
-              << "3rd Quantile: " << stats.third_quantile / 1000.0 << "us" << std::endl
+              << "3rd Quantile: " << stats.third_quartile / 1000.0 << "us" << std::endl
               << "Maximum:      " << stats.maximum / 1000.0 << "us" << std::endl;
 
 #if 0
