@@ -40,7 +40,7 @@ bool RealWorldBenchmark::run_server(ICommunicationHandler &handler) {
                     if (error == ipc::CommunicationError::NO_DATA_AVAILABLE)
                         return true;
 
-                    std::cout << "Error reading data on iteration " << i
+                    std::cout << "Error reading data on iteration " << i + 1
                               << " (Error: " << static_cast<int>(error) << ')' << std::endl;
                     return false;
                 },
@@ -65,14 +65,14 @@ bool RealWorldBenchmark::run_server(ICommunicationHandler &handler) {
 bool RealWorldBenchmark::run_client(ICommunicationHandler &handler) {
     std::cout << "Estimated time: " << get_estimated_time() << "s" << std::endl;
 
-    const std::int64_t offset = 1 * 1000 * 1000 * 1000;
-    const std::int64_t delta = ipc::get_timestamp() - data_[0].time + offset;
+    const std::int64_t start_delay = 1 * 1000 * 1000 * 1000;
+    const std::int64_t delta = ipc::get_timestamp() - data_[0].time + start_delay;
+    const auto threshold = threshold_ * 1000;
 
     for (unsigned int i = 0; i < data_.size(); ++i) {
-        const auto data = data_[i];
         const auto time = data_[i].time + delta;
+        const auto now = ipc::get_timestamp() - threshold;
 
-        const auto now = ipc::get_timestamp() - threshold_ * 1000;
         if (time < now) {
             misses_++;
         } else {
@@ -81,7 +81,7 @@ bool RealWorldBenchmark::run_client(ICommunicationHandler &handler) {
             std::this_thread::sleep_until(dt);
         }
 
-        const auto result = handler.write(data.symbol);
+        const auto result = handler.write(data_[i].symbol);
 
         if (!result) {
             std::cout << "Error writing data on iteration " << i + 1 << std::endl;

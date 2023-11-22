@@ -135,9 +135,8 @@ void run_server(const std::shared_ptr<ipc::ICommunicationHandler> &handler) {
     }
 }
 
-int run_latency(ipc::ICommunicationHandler &handler, bool readonly) {
-    constexpr auto iterations = 1000;
-    ipc::benchmark::LatencyBenchmark bench(iterations, 10, readonly);
+int run_latency(ipc::ICommunicationHandler &handler, unsigned int iterations, unsigned int delay, bool readonly) {
+    ipc::benchmark::LatencyBenchmark bench(iterations, delay, readonly);
     if (!bench.setup(handler))
         return EXIT_FAILURE;
 
@@ -158,6 +157,7 @@ int run_latency(ipc::ICommunicationHandler &handler, bool readonly) {
         const auto avg = static_cast<double>(sum) / static_cast<double>(count);
 
         std::cout << "Iterations: " << count << std::endl
+                  << "Delay:      " << delay << "ms" << std::endl
                   << "Minimum:    " << *min / 1000.0 << "us" << std::endl
                   << "Maximum:    " << *max / 1000.0 << "us" << std::endl
                   << "Average:    " << avg / 1000.0 << "us" << std::endl;
@@ -172,9 +172,8 @@ int run_latency(ipc::ICommunicationHandler &handler, bool readonly) {
     return EXIT_SUCCESS;
 }
 
-int run_throughput(ipc::ICommunicationHandler &handler, bool readonly) {
-    constexpr auto iterations = 1'000'000;
-    ipc::benchmark::ThroughputBenchmark bench(iterations, 512 - sizeof(ipc::DataHeader), readonly);
+int run_throughput(ipc::ICommunicationHandler &handler, unsigned int iterations, unsigned int body_size, bool readonly) {
+    ipc::benchmark::ThroughputBenchmark bench(iterations, body_size, readonly);
     if (!bench.setup(handler))
         return EXIT_FAILURE;
 
@@ -204,9 +203,8 @@ int run_throughput(ipc::ICommunicationHandler &handler, bool readonly) {
     return EXIT_SUCCESS;
 }
 
-int run_execution_time(ipc::ICommunicationHandler &handler, bool readonly) {
-    constexpr auto iterations = 1000;
-    ipc::benchmark::ExecutionTimeBenchmark bench(iterations, 512 - sizeof(ipc::DataHeader), 10, readonly);
+int run_execution_time(ipc::ICommunicationHandler &handler, unsigned int iterations, unsigned int body_size, unsigned int delay, bool readonly) {
+    ipc::benchmark::ExecutionTimeBenchmark bench(iterations, body_size, delay, readonly);
     if (!bench.setup(handler))
         return EXIT_FAILURE;
 
@@ -227,6 +225,7 @@ int run_execution_time(ipc::ICommunicationHandler &handler, bool readonly) {
     const auto avg = static_cast<double>(sum) / static_cast<double>(count);
 
     std::cout << "Iterations: " << count << std::endl
+              << "Delay:      " << delay << "ms" << std::endl
               << "Size:       " << size << " Byte (" << size + sizeof(ipc::DataHeader) << " Byte)" << std::endl
               << "Minimum:    " << *min / 1000.0 << "us" << std::endl
               << "Maximum:    " << *max / 1000.0 << "us" << std::endl
@@ -242,7 +241,7 @@ int run_execution_time(ipc::ICommunicationHandler &handler, bool readonly) {
     return EXIT_SUCCESS;
 }
 
-int run_real_world(ipc::ICommunicationHandler &handler, const std::string &path, bool readonly) {
+int run_real_world(ipc::ICommunicationHandler &handler, const std::string &path, unsigned int threshold, bool readonly) {
     std::vector<ipc::benchmark::RealWorldBenchmark::DataPoint> data{};
 
     std::ifstream file(path);
@@ -283,7 +282,6 @@ int run_real_world(ipc::ICommunicationHandler &handler, const std::string &path,
         return EXIT_FAILURE;
 
     const auto count = bench.get_iterations();
-    const auto threshold = bench.get_threshold();
     const auto misses = bench.get_misses();
 
     std::cout << "Iterations: " << count << std::endl
@@ -299,11 +297,23 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    const std::string type(argv[1]);
-    const std::string path(argv[2]);
-    const auto readonly = strcmp(argv[3], "reader") == 0;
+    /*
+     *  ./ipc <kind> <type> <mode> <parameter...>
+     *
+     *  <kind> = normal, latency, throughput, execution, realworld
+     *  <type> = dbus, fifo, ...
+     *  <mode> = reader, writer
+     *  <parameter> = benchmark specific
+     */
 
-    auto handler = create_handler(type, path, readonly);
+    const std::string kind(argv[1]);
+    const std::string type(argv[2]);
+    const auto mode = strcmp(argv[3], "reader") == 0;
+
+    const std::string path = type == "udp" || type == "tcp" ? "127.0.0.1" : "ipc-handler";
+    std::cout << "Path: " << path << std::endl;
+
+    auto handler = create_handler(type, path, mode);
     if (!handler) {
         std::cout << "Invalid parameter" << std::endl;
         return EXIT_FAILURE;
@@ -311,44 +321,105 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Loading handler... (" << type << ')' << std::endl;
 
-#if 1
-    auto temp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    std::cout << "Start: " << ctime(&temp);
+    if (kind == "normal") {
+        std::cout << "Running normal program..." << std::endl;
 
-    // return run_latency(*handler, readonly);
-    // return run_throughput(*handler, readonly);
-    // return run_execution_time(*handler, readonly);
-    auto res = run_real_world(*handler, "../testdata/fifo_trace.txt", readonly);
+        const auto res = handler->open();
+        if (!res) {
+            std::cout << "Error opening handler" << std::endl;
+            return EXIT_FAILURE;
+        }
 
-    temp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    std::cout << "End: " << ctime(&temp);
+        std::cout << "Handler opened " << "(readonly=" << mode << ')' << std::endl;
 
-    return res;
-#else
-    const auto res = handler->open();
-    if (!res) {
-        std::cout << "Error opening handler" << std::endl;
+        std::thread t;
+        if (mode) {
+            t = std::thread(run_server, handler);
+        } else {
+            t = std::thread(run_client, handler);
+        }
+
+        std::cin.get();
+
+        std::cout << "Shutting down..." << std::endl;
+        stop = true;
+        t.join();
+
+        handler->close();
+        std::cout << "Handler closed" << std::endl;
+
+        return EXIT_SUCCESS;
+    } else if (kind == "latency") {
+        if (argc < 6) {
+            std::cout << "Missing arguments" << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        const auto iterations = std::stoul(argv[4]);
+        const auto delay = std::stoul(argv[5]);
+
+        auto temp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::cout << "Start: " << ctime(&temp);
+
+        const auto res = run_latency(*handler, iterations, delay, mode);
+
+        temp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::cout << "End: " << ctime(&temp);
+        return res;
+    } else if (kind == "throughput") {
+        if (argc < 6) {
+            std::cout << "Missing arguments" << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        const auto iterations = std::stoul(argv[4]);
+        const auto body_size = std::stoul(argv[5]);
+
+        auto temp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::cout << "Start: " << ctime(&temp);
+
+        const auto res = run_throughput(*handler, iterations, body_size, mode);
+
+        temp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::cout << "End: " << ctime(&temp);
+        return res;
+    } else if (kind == "execution") {
+        if (argc < 7) {
+            std::cout << "Missing arguments" << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        const auto iterations = std::stoul(argv[4]);
+        const auto body_size = std::stoul(argv[5]);
+        const auto delay = std::stoul(argv[6]);
+
+        auto temp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::cout << "Start: " << ctime(&temp);
+
+        const auto res = run_execution_time(*handler, iterations, body_size, delay, mode);
+
+        temp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::cout << "End: " << ctime(&temp);
+        return res;
+    } else if (kind == "realworld") {
+        if (argc < 6) {
+            std::cout << "Missing arguments" << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        const auto file_path = std::string(argv[4]);
+        const auto threshold = std::stoul(argv[5]);
+
+        auto temp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::cout << "Start: " << ctime(&temp);
+
+        const auto res = run_real_world(*handler, file_path, threshold, mode);
+
+        temp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::cout << "End: " << ctime(&temp);
+        return res;
+    } else {
+        std::cout << "Invalid program kind" << std::endl;
         return EXIT_FAILURE;
     }
-
-    std::cout << "Handler opened " << "(readonly=" << readonly << ')' << std::endl;
-
-    std::thread t;
-    if (readonly) {
-        t = std::thread(run_server, handler);
-    } else {
-        t = std::thread(run_client, handler);
-    }
-
-    std::cin.get();
-
-    std::cout << "Shutting down..." << std::endl;
-    stop = true;
-    t.join();
-
-    handler->close();
-    std::cout << "Handler closed" << std::endl;
-
-    return EXIT_SUCCESS;
-#endif
 }
