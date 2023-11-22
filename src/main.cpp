@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <numeric>
 #include <sstream>
 #include <thread>
 
@@ -11,6 +10,7 @@
 #include "benchmark/latency.hpp"
 #include "benchmark/realworld.hpp"
 #include "benchmark/throughput.hpp"
+#include "benchmark/stats.hpp"
 #include "handler/datagram_socket.hpp"
 #include "handler/dbus.hpp"
 #include "handler/fifo.hpp"
@@ -152,15 +152,17 @@ int run_latency(ipc::ICommunicationHandler &handler, unsigned int iterations, un
     if (readonly) {
         const auto res = bench.get_results();
         const auto count = res.size();
-        const auto [min, max] = std::minmax_element(res.begin(), res.end());
-        const auto sum = std::reduce(res.begin(), res.end());
-        const auto avg = static_cast<double>(sum) / static_cast<double>(count);
 
-        std::cout << "Iterations: " << count << std::endl
-                  << "Delay:      " << delay << "ms" << std::endl
-                  << "Minimum:    " << *min / 1000.0 << "us" << std::endl
-                  << "Maximum:    " << *max / 1000.0 << "us" << std::endl
-                  << "Average:    " << avg / 1000.0 << "us" << std::endl;
+        const auto stats = ipc::benchmark::Statistics::compute(res);
+
+        std::cout << "Iterations:   " << count << std::endl
+                  << "Delay:        " << delay << "ms" << std::endl
+                  << "Minimum:      " << stats.minimum / 1000.0 << "us" << std::endl
+                  << "1st Quantile: " << stats.first_quantile / 1000.0 << "us" << std::endl
+                  << "Median:       " << stats.median / 1000.0 << "us" << std::endl
+                  << "Average:      " << stats.average / 1000.0 << "us" << std::endl
+                  << "3rd Quantile: " << stats.third_quantile / 1000.0 << "us" << std::endl
+                  << "Maximum:      " << stats.maximum / 1000.0 << "us" << std::endl;
 #if 0
         std::cout << "Data: ";
         for (auto &i: bench.get_results())
@@ -220,16 +222,18 @@ int run_execution_time(ipc::ICommunicationHandler &handler, unsigned int iterati
     const auto res = bench.get_results();
     const auto count = res.size();
     const auto size = bench.get_size();
-    const auto [min, max] = std::minmax_element(res.begin(), res.end());
-    const auto sum = std::reduce(res.begin(), res.end());
-    const auto avg = static_cast<double>(sum) / static_cast<double>(count);
 
-    std::cout << "Iterations: " << count << std::endl
-              << "Delay:      " << delay << "ms" << std::endl
-              << "Size:       " << size << " Byte (" << size + sizeof(ipc::DataHeader) << " Byte)" << std::endl
-              << "Minimum:    " << *min / 1000.0 << "us" << std::endl
-              << "Maximum:    " << *max / 1000.0 << "us" << std::endl
-              << "Average:    " << avg / 1000.0 << "us" << std::endl;
+    const auto stats = ipc::benchmark::Statistics::compute(res);
+
+    std::cout << "Iterations:   " << count << std::endl
+              << "Delay:        " << delay << "ms" << std::endl
+              << "Size:         " << size << " Byte (" << size + sizeof(ipc::DataHeader) << " Byte)" << std::endl
+              << "Minimum:      " << stats.minimum / 1000.0 << "us" << std::endl
+              << "1st Quantile: " << stats.first_quantile / 1000.0 << "us" << std::endl
+              << "Median:       " << stats.median / 1000.0 << "us" << std::endl
+              << "Average:      " << stats.average / 1000.0 << "us" << std::endl
+              << "3rd Quantile: " << stats.third_quantile / 1000.0 << "us" << std::endl
+              << "Maximum:      " << stats.maximum / 1000.0 << "us" << std::endl;
 
 #if 0
     std::cout << "Data: ";
