@@ -187,7 +187,7 @@ bool StreamSocket::accept() {
         return false;
 
     // Accept new client
-    res = ::accept(sfd_, nullptr, nullptr);
+    res = ::accept4(sfd_, nullptr, nullptr, SOCK_NONBLOCK);
     if (res == -1) {
         perror("StreamSocket::accept (accept)");
         return false;
