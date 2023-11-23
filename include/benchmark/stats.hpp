@@ -9,9 +9,11 @@ namespace ipc::benchmark {
 
 struct Statistics {
     const double minimum;
+    const double filtered_minimum;
     const double first_quartile;
     const double median;
     const double third_quartile;
+    const double filtered_maximum;
     const double maximum;
     const double average;
     const double variance;
@@ -40,7 +42,13 @@ Statistics Statistics::compute(const std::vector<T> &data) {
     auto tmp = data;
     std::sort(tmp.begin(), tmp.end());
 
-    const auto sum = std::reduce(tmp.begin(), tmp.end());
+    const auto min = static_cast<double>(tmp.front());
+    const auto max = static_cast<double>(tmp.back());
+
+    const auto q1 = quantile(tmp, 0.25);
+    const auto q3 = quantile(tmp, 0.75);
+
+    const auto sum = std::accumulate(tmp.begin(), tmp.end(), int64_t(0));
     const auto avg = static_cast<double>(sum) / static_cast<double>(tmp.size());
 
     const auto add_square = [avg](double sum, int i) {
@@ -52,11 +60,13 @@ Statistics Statistics::compute(const std::vector<T> &data) {
     const auto v = total / static_cast<double>(tmp.size() - 1);
 
     return Statistics{
-            .minimum = static_cast<double>(tmp.front()),
-            .first_quartile = quantile(tmp, 0.25),
+            .minimum = min,
+            .filtered_minimum = std::max(min, q1 - (q3 - q1) * 1.5),
+            .first_quartile = q1,
             .median = quantile(tmp, 0.5),
-            .third_quartile = quantile(tmp, 0.75),
-            .maximum = static_cast<double>(tmp.back()),
+            .third_quartile = q3,
+            .filtered_maximum = std::min(max, q3 + (q3 - q1) * 1.5),
+            .maximum = max,
             .average = avg,
             .variance = v,
             .standard_deviation = std::sqrt(v)

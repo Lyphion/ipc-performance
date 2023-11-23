@@ -292,9 +292,6 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> StreamSocke
             return CommunicationError::READ_ERROR;
         }
 
-        if (result == 0)
-            return CommunicationError::CONNECTION_CLOSED;
-
         amount += result;
     } while (amount < header.get_body_size());
 

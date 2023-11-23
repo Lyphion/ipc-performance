@@ -158,11 +158,14 @@ int run_latency(ipc::ICommunicationHandler &handler, unsigned int iterations, un
         std::cout << "Iterations:   " << count << std::endl
                   << "Delay:        " << delay << "ms" << std::endl
                   << "Minimum:      " << stats.minimum / 1000.0 << "us" << std::endl
+                  << "Minimum':     " << stats.filtered_minimum / 1000.0 << "us" << std::endl
                   << "1st Quartile: " << stats.first_quartile / 1000.0 << "us" << std::endl
                   << "Median:       " << stats.median / 1000.0 << "us" << std::endl
                   << "Average:      " << stats.average / 1000.0 << "us" << std::endl
                   << "3rd Quartile: " << stats.third_quartile / 1000.0 << "us" << std::endl
-                  << "Maximum:      " << stats.maximum / 1000.0 << "us" << std::endl;
+                  << "Maximum':     " << stats.filtered_maximum / 1000.0 << "us" << std::endl
+                  << "Maximum:      " << stats.maximum / 1000.0 << "us" << std::endl
+                  << "Deviation:    " << stats.standard_deviation / 1000.0 << "us" << std::endl;
 #if 0
         std::cout << "Data: ";
         for (auto &i: bench.get_results())
@@ -229,11 +232,14 @@ int run_execution_time(ipc::ICommunicationHandler &handler, unsigned int iterati
               << "Delay:        " << delay << "ms" << std::endl
               << "Size:         " << size << " Byte (" << size + sizeof(ipc::DataHeader) << " Byte)" << std::endl
               << "Minimum:      " << stats.minimum / 1000.0 << "us" << std::endl
+              << "Minimum':     " << stats.filtered_minimum / 1000.0 << "us" << std::endl
               << "1st Quartile: " << stats.first_quartile / 1000.0 << "us" << std::endl
               << "Median:       " << stats.median / 1000.0 << "us" << std::endl
               << "Average:      " << stats.average / 1000.0 << "us" << std::endl
               << "3rd Quartile: " << stats.third_quartile / 1000.0 << "us" << std::endl
-              << "Maximum:      " << stats.maximum / 1000.0 << "us" << std::endl;
+              << "Maximum':     " << stats.filtered_maximum / 1000.0 << "us" << std::endl
+              << "Maximum:      " << stats.maximum / 1000.0 << "us" << std::endl
+              << "Deviation:    " << stats.standard_deviation / 1000.0 << "us" << std::endl;
 
 #if 0
     std::cout << "Data: ";
