@@ -294,7 +294,8 @@ int run_real_world(ipc::ICommunicationHandler &handler, const std::string &path,
     const auto count = bench.get_iterations();
     const auto misses = bench.get_misses();
 
-    std::cout << "Iterations: " << count << std::endl
+    std::cout << "File:       " << path << std::endl
+              << "Iterations: " << count << std::endl
               << "Threshold:  " << threshold << "us" << std::endl
               << "Misses:     " << misses << std::endl;
 
