@@ -75,6 +75,9 @@ bool StreamSocket::create_server() {
             return false;
         }
 
+        int option = 1;
+        setsockopt(sfd_, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+
         // Build addresses for communication
         if (!build_address())
             return false;
@@ -232,12 +235,12 @@ bool StreamSocket::write(const IDataObject &obj) {
         return false;
 
     // Serialize body
+    const auto timestamp = get_timestamp();
     const auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
     if (size == -1)
         return false;
 
     last_id_++;
-    const auto timestamp = get_timestamp();
     DataHeader header(last_id_, obj.get_type(), size, timestamp);
 
     // Serialize header
@@ -285,7 +288,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> StreamSocke
     } while (amount < header_size);
 
     // Deserialize header
-    const auto optional = DataHeader::deserialize(buffer_.data(), result);
+    const auto optional = DataHeader::deserialize(buffer_.data(), header_size);
     if (!optional)
         return CommunicationError::INVALID_HEADER;
 

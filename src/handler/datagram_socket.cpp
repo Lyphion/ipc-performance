@@ -76,6 +76,9 @@ bool DatagramSocket::create_server() {
             return false;
         }
 
+        int option = 1;
+        setsockopt(sfd_, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+
         // Build addresses for communication
         if (!build_address())
             return false;
@@ -191,7 +194,7 @@ bool DatagramSocket::write(const IDataObject &obj) {
         const auto address = reinterpret_cast<const sockaddr *>(&std::get<0>(address_));
         res = sendto(sfd_, buffer_.data(), header_size + size, 0, address, sizeof(sockaddr_un));
     } else {
-       const  auto address = reinterpret_cast<const sockaddr *>(&std::get<1>(address_));
+        const auto address = reinterpret_cast<const sockaddr *>(&std::get<1>(address_));
         res = sendto(sfd_, buffer_.data(), header_size + size, 0, address, sizeof(sockaddr_in));
     }
 
@@ -219,7 +222,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> DatagramSoc
     }
 
     // Deserialize header
-    const auto optional = DataHeader::deserialize(buffer_.data(), result);
+    const auto optional = DataHeader::deserialize(buffer_.data(), header_size);
     if (!optional)
         return CommunicationError::INVALID_HEADER;
 

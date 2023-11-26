@@ -143,16 +143,8 @@ bool SharedFile::write(const IDataObject &obj) {
     if (!file_.is_open())
         return false;
 
-    const auto timestamp = get_timestamp();
-
-    // Wait until file is available
-    const auto res = sem_wait(writer_);
-    if (res == -1) {
-        perror("SharedFile::write (sem_wait)");
-        return false;
-    }
-
     // Serialize body
+    const auto timestamp = get_timestamp();
     const auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
     if (size == -1) {
         sem_post(writer_);
@@ -173,6 +165,13 @@ bool SharedFile::write(const IDataObject &obj) {
     if (file_.fail()) {
         perror("SharedFile::write (seekp)");
         sem_post(writer_);
+        return false;
+    }
+
+    // Wait until file is available
+    const auto res = sem_wait(writer_);
+    if (res == -1) {
+        perror("SharedFile::write (sem_wait)");
         return false;
     }
 
@@ -234,7 +233,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedFile:
     sem_post(writer_);
 
     // Deserialize header
-    const auto optional = DataHeader::deserialize(buffer_.data(), BUFFER_SIZE);
+    const auto optional = DataHeader::deserialize(buffer_.data(), header_size);
     if (!optional)
         return CommunicationError::INVALID_HEADER;
 
