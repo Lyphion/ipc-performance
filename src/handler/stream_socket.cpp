@@ -1,6 +1,5 @@
 #include "handler/stream_socket.hpp"
 
-#include <cassert>
 #include <utility>
 
 extern "C" {
@@ -260,19 +259,30 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> StreamSocke
         return CommunicationError::CONNECTION_CLOSED;
 
     // Read data from pipe
-    auto result = recv(cfd_, buffer_.data(), header_size, 0);
-    if (result == -1) {
-        if (errno == EAGAIN)
-            return CommunicationError::NO_DATA_AVAILABLE;
+    long result;
+    unsigned int amount = 0;
+    do {
+        result = recv(cfd_, &buffer_[amount], header_size - amount, 0);
+        if (result == -1) {
+            if (errno == EAGAIN) {
+                // Some part of the header was already read -> waiting for rest
+                if (amount > 0)
+                    continue;
 
-        perror("StreamSocket::read (recv)");
-        return CommunicationError::READ_ERROR;
-    }
+                // Nothing read yet -> no data available
+                return CommunicationError::NO_DATA_AVAILABLE;
+            }
 
-    if (result == 0)
-        return CommunicationError::CONNECTION_CLOSED;
+            perror("StreamSocket::read (recv)");
+            return CommunicationError::READ_ERROR;
+        }
 
-    assert(header_size == result);
+        // We expect at least 1 byte every time we read
+        if (result == 0)
+            return CommunicationError::CONNECTION_CLOSED;
+
+        amount += result;
+    } while (amount < header_size);
 
     // Deserialize header
     const auto optional = DataHeader::deserialize(buffer_.data(), result);
@@ -281,8 +291,9 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> StreamSocke
 
     const auto header = *optional;
 
-    unsigned int amount = 0;
-    do {
+    // Read data from pipe
+    amount = 0;
+    while (amount < header.get_body_size()) {
         result = recv(cfd_, &buffer_[amount], header.get_body_size() - amount, 0);
         if (result == -1) {
             if (errno == EAGAIN)
@@ -292,8 +303,12 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> StreamSocke
             return CommunicationError::READ_ERROR;
         }
 
+        // We expect at least 1 byte every time we read
+        if (result == 0)
+            return CommunicationError::CONNECTION_CLOSED;
+
         amount += result;
-    } while (amount < header.get_body_size());
+    }
 
     const auto body = deserialize_data_object(header.get_type(), buffer_.data(), header.get_body_size());
 
