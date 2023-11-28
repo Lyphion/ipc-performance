@@ -192,16 +192,8 @@ bool SharedMemory::write(const IDataObject &obj) {
     if (fd_ == -1)
         return false;
 
-    const auto timestamp = get_timestamp();
-
-    // Wait until memory is available
-    const auto res = sem_wait(writer_);
-    if (res == -1) {
-        perror("SharedMemory::write (sem_wait)");
-        return false;
-    }
-
     // Serialize body
+    const auto timestamp = get_timestamp();
     const auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
     if (size == -1) {
         sem_post(writer_);
@@ -213,6 +205,13 @@ bool SharedMemory::write(const IDataObject &obj) {
 
     // Serialize header
     header.serialize(buffer_.data(), header_size);
+
+    // Wait until memory is available
+    const auto res = sem_wait(writer_);
+    if (res == -1) {
+        perror("SharedMemory::write (sem_wait)");
+        return false;
+    }
 
     // Copy data to memory
     std::memcpy(&address_[offset_ * BUFFER_SIZE], buffer_.data(), header_size + size);
@@ -246,7 +245,7 @@ std::variant<std::tuple<DataHeader, DataObject>, CommunicationError> SharedMemor
     sem_post(writer_);
 
     // Deserialize header
-    const auto optional = DataHeader::deserialize(buffer_.data(), BUFFER_SIZE);
+    const auto optional = DataHeader::deserialize(buffer_.data(), header_size);
     if (!optional)
         return CommunicationError::INVALID_HEADER;
 

@@ -134,6 +134,7 @@ bool DBus::write(const IDataObject &obj) {
 
     // Build message object path
     const auto path = PATH_PREFIX + std::to_string(static_cast<int>(obj.get_type()));
+    const auto timestamp = get_timestamp();
 
     // Prepare message
     const auto msg = dbus_message_new_method_call(
@@ -156,7 +157,6 @@ bool DBus::write(const IDataObject &obj) {
     }
 
     last_id_++;
-    const auto timestamp = get_timestamp();
 
     // Prepare arguments
     DBusMessageIter args;
