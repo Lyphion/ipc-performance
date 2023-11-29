@@ -195,10 +195,8 @@ bool SharedMemory::write(const IDataObject &obj) {
     // Serialize body
     const auto timestamp = get_timestamp();
     const auto size = obj.serialize(&buffer_[header_size], BUFFER_SIZE - header_size);
-    if (size == -1) {
-        sem_post(writer_);
+    if (size == -1)
         return false;
-    }
 
     last_id_++;
     DataHeader header(last_id_, obj.get_type(), size, timestamp);
