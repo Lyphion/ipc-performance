@@ -68,7 +68,6 @@ std::variant<DataObject, CommunicationError> deserialize_data_object(DataType ty
                 return CommunicationError::INVALID_DATA;
 
             return *data;
-
         }
     }
 

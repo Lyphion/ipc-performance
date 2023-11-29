@@ -48,8 +48,8 @@ Statistics Statistics::compute(const std::vector<T> &data) {
     const auto q1 = quantile(tmp, 0.25);
     const auto q3 = quantile(tmp, 0.75);
 
-    const auto sum = std::accumulate(tmp.begin(), tmp.end(), int64_t(0));
-    const auto avg = static_cast<double>(sum) / static_cast<double>(tmp.size());
+    const auto sum = std::accumulate(tmp.begin(), tmp.end(), 0.0);
+    const auto avg = sum / static_cast<double>(tmp.size());
 
     const auto add_square = [avg](double sum, int i) {
         const auto d = i - avg;

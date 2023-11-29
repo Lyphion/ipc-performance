@@ -47,11 +47,11 @@ std::optional<BinaryData> BinaryData::deserialize(const std::byte *buffer, unsig
     if (length == 0)
         return BinaryData(std::vector<std::byte>{});
 
-    std::vector<std::byte> data_{};
-    data_.reserve(length);
-    std::memcpy(data_.data(), &buffer[offset], length);
+    std::vector<std::byte> data{};
+    data.resize(length);
+    std::memcpy(data.data(), &buffer[offset], length);
 
-    return BinaryData(data_);
+    return BinaryData(data);
 }
 
 std::ostream &operator<<(std::ostream &outs, const BinaryData &data) {
