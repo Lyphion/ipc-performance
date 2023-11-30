@@ -4,6 +4,7 @@
 
 extern "C" {
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <unistd.h>
 }
@@ -135,6 +136,10 @@ bool StreamSocket::create_client() {
             perror("StreamSocket::create_client (connect)");
             return false;
         }
+
+        // Disable buffering and send data immediately (Disable Nagle algorithm)
+        // int value = 1;
+        // setsockopt(sfd_, IPPROTO_TCP, TCP_NODELAY,  &value, sizeof(value));
     }
 
     return true;
