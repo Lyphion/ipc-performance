@@ -8,7 +8,7 @@ from scipy.stats import gaussian_kde
 
 
 def main():
-    with open("fifo_trace.txt", "r", encoding="UTF8") as f:
+    with open("traces/trace_web_scraper.log", "r", encoding="UTF8") as f:
         # fifo write: @<timestamp> <address> <area>: <method>
         data = [x.split(" ", maxsplit=5) for x in f.read().splitlines()]
 
@@ -55,6 +55,8 @@ def main():
     xs = np.linspace(tmin, tmax, 500)
     ax[0].plot(xs, density(xs))
     ax[0].set_title('Event occurrences')
+    ax[0].set_xlabel("Time in s")
+    ax[0].set_ylabel("Kernel density estimate")
 
     tdistance = np.log10(distance)
 
@@ -62,6 +64,8 @@ def main():
     ax[1].scatter(xs, distance, c=tdistance, s=0.3, cmap="coolwarm")
     ax[1].set_title('Time between events')
     ax[1].set_yscale('log')
+    ax[1].set_xlabel("Time in s")
+    ax[1].set_ylabel("Timedelta in s")
 
     density = gaussian_kde(tdistance)
     density.set_bandwidth(0.01)
@@ -70,6 +74,8 @@ def main():
     ax[2].plot(xs, density(xs))
     ax[2].xaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0E}'.format(10**y)))
     ax[2].set_title('Distribution of time between events')
+    ax[2].set_xlabel("Timedelta in s")
+    ax[2].set_ylabel("Kernel density estimate")
 
     fig.tight_layout()
     plt.show()
