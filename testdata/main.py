@@ -8,7 +8,7 @@ from scipy.stats import gaussian_kde
 
 
 def main():
-    with open("traces/trace_web_scraper.log", "r", encoding="UTF8") as f:
+    with open("traces/trace_mc_server.log", "r", encoding="UTF8") as f:
         # fifo write: @<timestamp> <address> <area>: <method>
         data = [x.split(" ", maxsplit=5) for x in f.read().splitlines()]
 
@@ -48,7 +48,7 @@ def main():
 
     # timestamps = [(t - tmin) / (tmax - tmin) for t in timestamps]
 
-    fig, ax = plt.subplots(3, figsize=(10, 10), dpi=300)
+    fig, ax = plt.subplots(3, figsize=(10, 13), dpi=300)
 
     density = gaussian_kde(timestamps)
     density.set_bandwidth(0.01)
