@@ -1,6 +1,7 @@
 import heapq
 from collections import Counter
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import FuncFormatter
@@ -29,7 +30,11 @@ def main():
     print("Distances greater than 200us:", len([d for d in distance if d > 200e-6]))
     print("Distances greater than 1ms:", len([d for d in distance if d > 1e-3]))
 
-    """
+    total = 0
+    for line in data:
+        total += 16 + 8 + 4 + 4 + len(line[-1])
+    print(round(total / 1024 / 1024, ndigits=2), "MiB")
+
     addresses = [(int(d[3], 16), int(d[4][:-1], 10), d[5]) for d in data]
     areas = []
     count = 0
@@ -48,24 +53,26 @@ def main():
 
     # timestamps = [(t - tmin) / (tmax - tmin) for t in timestamps]
 
+    """
+    matplotlib.rcParams.update({'font.size': 16})
     fig, ax = plt.subplots(3, figsize=(10, 13), dpi=300)
 
     density = gaussian_kde(timestamps)
-    density.set_bandwidth(0.01)
+    density.set_bandwidth(0.005)
     xs = np.linspace(tmin, tmax, 500)
     ax[0].plot(xs, density(xs))
-    ax[0].set_title('Event occurrences')
-    ax[0].set_xlabel("Time in s")
-    ax[0].set_ylabel("Kernel density estimate")
+    ax[0].set_title('Zeitliche Verteilung der Ereignisse')
+    ax[0].set_xlabel("Zeit in s")
+    ax[0].set_ylabel("Kerndichteschätzung")
 
     tdistance = np.log10(distance)
 
     xs = timestamps[1:]
     ax[1].scatter(xs, distance, c=tdistance, s=0.3, cmap="coolwarm")
-    ax[1].set_title('Time between events')
+    ax[1].set_title('Zeitliche Verteilung der Zeitdifferenz zum vorherigen Ereignis')
     ax[1].set_yscale('log')
-    ax[1].set_xlabel("Time in s")
-    ax[1].set_ylabel("Timedelta in s")
+    ax[1].set_xlabel("Zeit in s")
+    ax[1].set_ylabel("Zeitdifferenz in s")
 
     density = gaussian_kde(tdistance)
     density.set_bandwidth(0.01)
@@ -73,9 +80,9 @@ def main():
     xs = np.linspace(min(tdistance), max(tdistance), 500)
     ax[2].plot(xs, density(xs))
     ax[2].xaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0E}'.format(10**y)))
-    ax[2].set_title('Distribution of time between events')
-    ax[2].set_xlabel("Timedelta in s")
-    ax[2].set_ylabel("Kernel density estimate")
+    ax[2].set_title('Verteilung der Zeitdifferenzen')
+    ax[2].set_xlabel("Zeitdifferenz in s")
+    ax[2].set_ylabel("Kerndichteschätzung")
 
     fig.tight_layout()
     plt.show()
