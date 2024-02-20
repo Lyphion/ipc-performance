@@ -9,7 +9,7 @@ from scipy.stats import gaussian_kde
 
 
 def main():
-    with open("traces/trace_mc_server.log", "r", encoding="UTF8") as f:
+    with open("traces/trace_web_scraper.log", "r", encoding="UTF8") as f:
         # fifo write: @<timestamp> <address> <area>: <method>
         data = [x.split(" ", maxsplit=5) for x in f.read().splitlines()]
 
@@ -35,6 +35,7 @@ def main():
         total += 16 + 8 + 4 + 4 + len(line[-1])
     print(round(total / 1024 / 1024, ndigits=2), "MiB")
 
+    """
     addresses = [(int(d[3], 16), int(d[4][:-1], 10), d[5]) for d in data]
     areas = []
     count = 0
@@ -53,8 +54,7 @@ def main():
 
     # timestamps = [(t - tmin) / (tmax - tmin) for t in timestamps]
 
-    """
-    matplotlib.rcParams.update({'font.size': 16})
+    # matplotlib.rcParams.update({'font.size': 16})
     fig, ax = plt.subplots(3, figsize=(10, 13), dpi=300)
 
     density = gaussian_kde(timestamps)
@@ -64,6 +64,8 @@ def main():
     ax[0].set_title('Zeitliche Verteilung der Ereignisse')
     ax[0].set_xlabel("Zeit in s")
     ax[0].set_ylabel("Kerndichteschätzung")
+    ax[0].minorticks_on()
+    ax[0].set_ylim(ymin=-0.025)
 
     tdistance = np.log10(distance)
 
@@ -73,16 +75,26 @@ def main():
     ax[1].set_yscale('log')
     ax[1].set_xlabel("Zeit in s")
     ax[1].set_ylabel("Zeitdifferenz in s")
+    ax[1].minorticks_on()
 
     density = gaussian_kde(tdistance)
     density.set_bandwidth(0.01)
 
     xs = np.linspace(min(tdistance), max(tdistance), 500)
     ax[2].plot(xs, density(xs))
-    ax[2].xaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0E}'.format(10**y)))
-    ax[2].set_title('Verteilung der Zeitdifferenzen')
-    ax[2].set_xlabel("Zeitdifferenz in s")
     ax[2].set_ylabel("Kerndichteschätzung")
+    ax[2].set_ylim(ymin=-0.001)
+    ax[2].minorticks_on()
+
+    ax2 = ax[2].twinx()
+    ax2.ecdf(tdistance, color='orange')
+    ax2.set_ylabel("Empirische Verteilungsfunktion")
+    ax2.set_ylim(ymin=-0.001)
+    ax2.minorticks_on()
+
+    ax[2].xaxis.set_major_formatter(FuncFormatter(lambda y, _: '{:.0E}'.format(10**y)))
+    ax[2].set_xlabel("Zeitdifferenz in s")
+    ax[2].set_title('Verteilung der Zeitdifferenzen')
 
     fig.tight_layout()
     plt.show()
